@@ -43,11 +43,16 @@ VAL_IMAGE_FRAC = 0.10
 # Device
 # --------------------------------------------------------------------------- #
 def get_device() -> str:
+    # Allow an explicit override, e.g. DEVICE=cpu (MPS can be unstable for some
+    # ops on macOS; Colab/CUDA is unaffected).
+    forced = os.environ.get("DEVICE")
+    if forced:
+        return forced
     import torch
-    if torch.backends.mps.is_available():
-        return "mps"
     if torch.cuda.is_available():
         return "cuda"
+    if torch.backends.mps.is_available():
+        return "mps"
     return "cpu"
 
 

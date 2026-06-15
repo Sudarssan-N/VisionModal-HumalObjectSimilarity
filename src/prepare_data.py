@@ -48,6 +48,22 @@ def convert_split(name: str, src: Path) -> np.ndarray:
     return t
 
 
+def export_analysis_assets():
+    """Export category matrix + human SPoSE embedding for Phase 5 analysis."""
+    import scipy.io as sio
+
+    cat = sio.loadmat(RAW / "data" / "category_mat_manual.mat")["category_mat_manual"]
+    cat = np.asarray(cat, dtype=np.uint8)
+    assert cat.shape[0] == C.N_IMAGES, cat.shape
+    np.save(C.DATA_DIR / "category_mat.npy", cat)
+    print(f"  category_mat: {cat.shape} -> data/category_mat.npy")
+
+    spose = np.loadtxt(RAW / "data" / "spose_embedding_66d_sorted.txt")
+    assert spose.shape[0] == C.N_IMAGES, spose.shape
+    np.save(C.DATA_DIR / "spose_human.npy", spose)
+    print(f"  spose_human:  {spose.shape} -> data/spose_human.npy")
+
+
 def main():
     # Concepts
     names = [ln.strip() for ln in CONCEPTS_SRC.read_text().splitlines() if ln.strip()]
@@ -60,6 +76,14 @@ def main():
     print("triplets:")
     for name, src in SPLITS.items():
         convert_split(name, src)
+
+    # Phase 5 assets
+    print("analysis assets:")
+    try:
+        export_analysis_assets()
+    except Exception as e:
+        print(f"  [warn] could not export analysis assets ({e}); "
+              f"Phase 5 can be re-run later")
 
     print("\nPhase 0 data prep complete. Next: place THINGS images in data/images/, "
           "then run src/extract_features.py")

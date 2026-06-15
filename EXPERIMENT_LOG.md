@@ -11,9 +11,9 @@ Living progress tracker. Append newest entries at the top of the **Daily log**. 
 | 0 | Setup & data acquisition | 🟡 In progress | Day 1 | Behavioral data done + verified; only THINGS images (manual DL) pending |
 | 1 | Feature extraction (5 backbones) | ⬜ Not started | Day 1–2 | Script ready; blocked on images |
 | 2 | Zero-shot odd-one-out baseline | ⬜ Not started | Day 2 | |
-| 3 | Learn linear transforms | ⬜ Not started | Day 3–4 | |
-| 4 | Cross-model transfer | ⬜ Not started | Day 4–5 | |
-| 5 | Error analysis & RSA | ⬜ Not started | Day 5–6 | |
+| 3 | Learn linear transforms | 🟡 Code done | Day 3–4 | `train_transform.py` validated on synthetic; needs real features |
+| 4 | Cross-model transfer | 🟡 Code done | Day 4–5 | `transfer.py` validated on synthetic; needs real features |
+| 5 | Error analysis & RSA | 🟡 Code done | Day 5–6 | `analysis.py` validated on synthetic; needs real features |
 | 6 | Writeup & figures | ⬜ Not started | Day 7 | |
 
 Legend: ⬜ Not started · 🟡 In progress · ✅ Done · ⚠️ Blocked
@@ -64,6 +64,15 @@ _Record any scope changes, hyperparameter choices, or assumptions here so result
 ---
 
 ## Daily log
+
+### Day 1 — Phases 3–5 built + validated (no images yet)
+- Wrote `src/align.py` (core): cosine-similarity triplet loss (SPoSE/VICE-style 3-way softmax over pairs), linear transform with **learnable temperature**, early-stopped training.
+  - First attempt used raw dot products → softmax saturated, gradients blew up, val acc *dropped*. Fixed by switching to L2-normalized cosine + learnable `logit_scale` (CLIP-style). Now stable and consistent with the Phase 2 cosine baseline.
+- `train_transform.py` (Phase 3), `transfer.py` (Phase 4, PCA→shared 256d + heatmap), `analysis.py` (Phase 5, category errors + RSA vs SPoSE using scipy, no rsatoolbox).
+- `smoke_test.py`: fabricates features as a noisy linear function of the real human embedding, runs the real Phase 3–5 scripts, asserts alignment improves. **Validated end-to-end (CPU): alignment improved test acc 5/5 (+0.034–0.059), RSA 0.69→0.85, transfer matrix + plots produced.**
+- Added `notebooks/colab_run.ipynb` for GPU runs.
+- **macOS MPS instability:** intermittent exit-133 native crash on MPS; added `DEVICE` override (use `DEVICE=cpu` locally). Colab/CUDA unaffected — this is the intended run target.
+- **Next:** get THINGS images → `extract_features.py` → run Phases 2–5 on real features.
 
 ### Day 1 — Environment + behavioral data
 - **Requirements:** verified torch 2.3.1 / transformers 4.39.3 / sklearn 1.4 / etc. already present. Installed `timm` 1.0.27; removed a pre-existing broken `wandb` (protobuf mismatch) that timm imports. `rsatoolbox` deferred (needs sklearn≥1.6) — documented; Phase 5 only.
