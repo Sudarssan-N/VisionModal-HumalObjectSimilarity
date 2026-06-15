@@ -30,28 +30,28 @@ Sources:
 - OSF: https://osf.io/f5rn6/
 - Code: https://github.com/ViCCo-Group/THINGS-data
 
-## 2. Images — manual (one-time agreement)
+## 2. Images — scripted ✅ (CC0, no login)
 
 We only need the **1,854 reference images** (one per concept), not the full 26k set.
-
-**Preferred — THINGSplus CC0 images** (safe to reproduce in a paper):
-- Reachable via https://things-initiative.org/ → THINGSplus.
-
-**Alternative — original THINGS images** (research use only, requires agreeing to terms):
-- https://things-initiative.org/ → THINGS object images database.
-
-The download is organized as one folder per concept
-(`object_images/aardvark/aardvark_01b.jpg`, ...). Use the helper to pick one
-representative image per concept and name it correctly:
+The **THINGSplus CC0 set** (one copyright-free image per concept) is on the
+THINGSplus OSF (`osf.io/jum2f`) and is **directly downloadable — no agreement,
+no password** (the password only applies to the copyrighted full image set, which
+we do not use). It is also safe to reproduce in a paper.
 
 ```bash
-python src/organize_images.py /path/to/THINGS/object_images
-# copies one image per concept -> data/images/{concept}.jpg
+python src/download_data.py --images        # downloads + unzips images_THINGSplus-CC0.zip (1.1 GB)
+python src/organize_images.py data/raw/images_cc0   # one image per concept -> data/images/{concept}.jpg
+python src/data.py                          # verify
 ```
 
-The pipeline needs exactly **one image per concept**, named `{concept}.jpg`, so
-the image order matches the concept/triplet index order. `src/data.py::image_paths`
-resolves `data/images/{concept}.jpg`, falling back to a sorted directory listing.
+`organize_images.py` recursively scans the unzipped folder and matches each
+concept to its image (handles flat `{concept}.jpg`, per-concept folders, or
+`{concept}_NNx.jpg` naming). The pipeline needs exactly **one image per concept**,
+named `{concept}.jpg`, so the order matches the concept/triplet index.
+
+> Alternative (only if you specifically need the original photographs): the full
+> `images_THINGS.zip` (4.8 GB) on the same OSF requires agreeing to terms and a
+> password — not needed for this project.
 
 ## 3. Verify
 

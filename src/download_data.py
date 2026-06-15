@@ -1,12 +1,12 @@
-"""Phase 0 — download the THINGS behavioral odd-one-out data.
+"""Phase 0 — download the THINGS data.
 
-The behavioral triplet data + code is mirrored on Figshare+ with a public REST
-API, so we can pull the file list and download programmatically (no login). The
-*images* are licensed separately and need a one-time manual click-through — see
-DATA_SETUP.md.
+Behavioral triplet data is mirrored on Figshare+ (public REST API). The CC0
+reference images (one copyright-free image per concept, 1,854 total) are on the
+THINGSplus OSF project and are directly downloadable — no login or agreement.
 
-Run:  python src/download_data.py            # list + download behavioral files
-      python src/download_data.py --list     # just show available files
+Run:  python src/download_data.py            # behavioral data
+      python src/download_data.py --list     # list behavioral files only
+      python src/download_data.py --images   # also download CC0 images (1.1 GB)
 """
 from __future__ import annotations
 
@@ -23,6 +23,10 @@ import config as C  # noqa: E402
 # Figshare+ article: "THINGS-data: Behavioral odd-one-out data and code"
 FIGSHARE_ARTICLE_ID = 20552784
 FIGSHARE_API = f"https://api.figshare.com/v2/articles/{FIGSHARE_ARTICLE_ID}"
+
+# THINGSplus OSF (jum2f): one CC0 image per concept, directly downloadable.
+CC0_IMAGES_URL = "https://osf.io/download/wb36u/"
+CC0_IMAGES_ZIP = "images_THINGSplus-CC0.zip"
 
 RAW_DIR = C.DATA_DIR / "raw"
 
@@ -46,10 +50,31 @@ def download(url: str, dest: Path):
                 bar.update(len(chunk))
 
 
+def download_images():
+    """Download + unzip the CC0 reference images (1.1 GB) from THINGSplus OSF."""
+    dest = RAW_DIR / CC0_IMAGES_ZIP
+    if not (dest.exists() and dest.stat().st_size > 1_000_000_000):
+        print(f"Downloading CC0 images (~1.1 GB) from {CC0_IMAGES_URL}")
+        download(CC0_IMAGES_URL, dest)
+    out = RAW_DIR / "images_cc0"
+    out.mkdir(exist_ok=True)
+    print(f"Unzipping -> {out}")
+    import zipfile
+    with zipfile.ZipFile(dest) as z:
+        z.extractall(out)
+    print(f"Done. Now run:  python src/organize_images.py {out}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", action="store_true", help="list files only")
+    ap.add_argument("--images", action="store_true",
+                    help="also download CC0 reference images (1.1 GB)")
     args = ap.parse_args()
+
+    if args.images:
+        download_images()
+        return
 
     try:
         files = list_files()
