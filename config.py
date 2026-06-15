@@ -90,3 +90,14 @@ MODEL_ZOO: dict[str, dict] = {
 }
 
 BATCH_SIZE = int(os.environ.get("BATCH_SIZE", 64))
+
+# THINGS 27 high-level categories, in the column order of category_mat_manual
+# (verified alphabetical; reconciled against concepts-metadata "Top-down Category
+# (manual selection)", 50057/50058 cells matching).
+CATEGORY_NAMES = [
+    "animal", "bird", "body part", "clothing", "clothing accessory", "container",
+    "dessert", "drink", "electronic device", "food", "fruit", "furniture",
+    "home decor", "insect", "kitchen appliance", "kitchen tool",
+    "medical equipment", "musical instrument", "office supply", "part of car",
+    "plant", "sports equipment", "tool", "toy", "vegetable", "vehicle", "weapon",
+]

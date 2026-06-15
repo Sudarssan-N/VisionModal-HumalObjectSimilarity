@@ -63,7 +63,8 @@ def category_analysis(test_t: np.ndarray, names: list[str]) -> dict:
             for c in range(cat.shape[1]):
                 m = odd_cat == c
                 if m.sum() >= 30:
-                    per_cat[int(c)] = float(correct[m].mean())
+                    cname = C.CATEGORY_NAMES[c] if c < len(C.CATEGORY_NAMES) else str(c)
+                    per_cat[cname] = float(correct[m].mean())
             rec[label] = {"overall": float(correct.mean()), "per_category": per_cat}
         out[name] = rec
     return out

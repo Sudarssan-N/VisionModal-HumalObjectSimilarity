@@ -65,6 +65,15 @@ _Record any scope changes, hyperparameter choices, or assumptions here so result
 
 ## Daily log
 
+### Day 1 — First REAL result (DINOv2) + full automation
+- **Images turned out to be fully scriptable**: THINGSplus CC0 set (1 image/concept) downloads directly from OSF (`osf.io/download/wb36u/`), no login/agreement. Added `download_data.py --images` + robust `organize_images.py`. Confirmed working (DINOv2 got real features).
+- **Real DINOv2 numbers** (test set, noise ceiling 0.673):
+  - Zero-shot **0.408** (CI 0.401–0.417) = 60.7% of ceiling — matches published DINOv2 results.
+  - Aligned **0.609** = **+0.20**, 90% of ceiling. Cheap linear transform closes most of the gap; consistent with Muttenthaler et al. gLocal (~0.60–0.64).
+- Added verified THINGS **27 category names** (alphabetical, reconciled vs metadata 50057/50058 cells) → `config.CATEGORY_NAMES`; `analysis.py` now labels categories by name.
+- Added `make_report.py` → `results/REPORT.md` (Table 1, transfer matrix, RSA, hardest categories). Wired into Colab notebook.
+- **Next:** finish extracting the other 4 backbones, then rerun zeroshot/train_transform/transfer/analysis/make_report for the full 5-model comparison. (`transfer.json` still stale-synthetic until all 5 features exist.)
+
 ### Day 1 — Phases 3–5 built + validated (no images yet)
 - Wrote `src/align.py` (core): cosine-similarity triplet loss (SPoSE/VICE-style 3-way softmax over pairs), linear transform with **learnable temperature**, early-stopped training.
   - First attempt used raw dot products → softmax saturated, gradients blew up, val acc *dropped*. Fixed by switching to L2-normalized cosine + learnable `logit_scale` (CLIP-style). Now stable and consistent with the Phase 2 cosine baseline.

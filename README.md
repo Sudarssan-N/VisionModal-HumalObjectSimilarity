@@ -38,6 +38,9 @@ python src/transfer.py
 
 # Phase 5 — category error analysis + RSA vs human
 python src/analysis.py
+
+# Assemble everything into results/REPORT.md
+python src/make_report.py
 ```
 
 ### Validate the pipeline without images
