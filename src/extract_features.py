@@ -99,6 +99,23 @@ _BACKENDS = {
 }
 
 
+def _as_tensor(out) -> torch.Tensor:
+    """Coerce a model output to a (B, d) tensor across transformers versions.
+
+    Recent transformers can return a ModelOutput from get_image_features instead
+    of a bare tensor; handle both."""
+    if isinstance(out, torch.Tensor):
+        return out
+    for attr in ("image_embeds", "pooler_output"):
+        v = getattr(out, attr, None)
+        if v is not None:
+            return v
+    lhs = getattr(out, "last_hidden_state", None)
+    if lhs is not None:
+        return lhs[:, 0]
+    raise TypeError(f"cannot extract embedding tensor from {type(out)}")
+
+
 def extract_one(name: str, spec: dict, device: str) -> np.ndarray:
     out_path = C.FEATURES_DIR / f"{name}.npy"
     if out_path.exists():
@@ -114,7 +131,7 @@ def extract_one(name: str, spec: dict, device: str) -> np.ndarray:
         if not batch:
             return
         x = torch.stack(batch)
-        z = embed(x).float().cpu().numpy()
+        z = _as_tensor(embed(x)).float().cpu().numpy()
         feats.append(z)
         batch.clear()
 
