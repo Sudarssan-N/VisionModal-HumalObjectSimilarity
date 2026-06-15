@@ -8,8 +8,8 @@ Living progress tracker. Append newest entries at the top of the **Daily log**. 
 
 | Phase | Description | Status | Day target | Notes |
 |-------|-------------|--------|------------|-------|
-| 0 | Setup & data acquisition | ⬜ Not started | Day 1 | |
-| 1 | Feature extraction (5 backbones) | ⬜ Not started | Day 1–2 | |
+| 0 | Setup & data acquisition | 🟡 In progress | Day 1 | Repo + scripts scaffolded; data download pending |
+| 1 | Feature extraction (5 backbones) | ⬜ Not started | Day 1–2 | Script ready (`src/extract_features.py`) |
 | 2 | Zero-shot odd-one-out baseline | ⬜ Not started | Day 2 | |
 | 3 | Learn linear transforms | ⬜ Not started | Day 3–4 | |
 | 4 | Cross-model transfer | ⬜ Not started | Day 4–5 | |
@@ -65,8 +65,17 @@ _Record any scope changes, hyperparameter choices, or assumptions here so result
 
 ## Daily log
 
+### Day 1 — Scaffold
+- Initialized git repo, pushed to `github.com/Sudarssan-N/VisionModal-HumalObjectSimilarity` (`main`).
+- Built runnable Phase 0–2 foundation:
+  - `config.py` (paths, seeds, 5-model zoo), `src/data.py` (concept index, triplets, **image-level** leakage-free split).
+  - `src/download_data.py` (behavioral data via public Figshare API).
+  - `src/extract_features.py` (per-backend adapters for DINOv2/CLIP/SigLIP via HF, ViT/ResNet via timm; MPS with CPU fallback).
+  - `src/zeroshot_eval.py` (vectorized odd-one-out accuracy + bootstrap CI).
+  - `DATA_SETUP.md`, `README.md`.
+- **Next:** run `python src/download_data.py`, complete the THINGSplus image click-through, point `config.py` at the files, then `python src/data.py` to verify.
+
 ### Day 0 — Planning
 - Compressed the original 1.5–2.5 month design into a 7-day sprint.
 - Locked the 5-backbone zoo; deferred neural/hyperbolic/diffusion extensions.
 - Created `PROJECT_PLAN.md` and this log.
-- **Next:** Phase 0 — set up repo skeleton + start THINGS data download.
