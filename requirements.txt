@@ -1,0 +1,20 @@
+# Core
+torch>=2.2
+torchvision>=0.17
+numpy>=1.26
+pandas>=2.1
+pyarrow>=15.0
+pillow>=10.0
+tqdm>=4.66
+
+# Model zoo
+timm>=1.0.7
+transformers>=4.44
+
+# Analysis
+scikit-learn>=1.4
+rsatoolbox>=0.1.5
+matplotlib>=3.8
+
+# Data download (OSF)
+requests>=2.31

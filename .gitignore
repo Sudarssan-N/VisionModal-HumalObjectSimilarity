@@ -1,0 +1,22 @@
+# Data & artifacts (large / regenerable)
+data/
+features/
+results/
+*.npy
+*.npz
+*.parquet
+*.pt
+*.pth
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
