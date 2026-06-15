@@ -8,8 +8,8 @@ Living progress tracker. Append newest entries at the top of the **Daily log**. 
 
 | Phase | Description | Status | Day target | Notes |
 |-------|-------------|--------|------------|-------|
-| 0 | Setup & data acquisition | 🟡 In progress | Day 1 | Repo + scripts scaffolded; data download pending |
-| 1 | Feature extraction (5 backbones) | ⬜ Not started | Day 1–2 | Script ready (`src/extract_features.py`) |
+| 0 | Setup & data acquisition | 🟡 In progress | Day 1 | Behavioral data done + verified; only THINGS images (manual DL) pending |
+| 1 | Feature extraction (5 backbones) | ⬜ Not started | Day 1–2 | Script ready; blocked on images |
 | 2 | Zero-shot odd-one-out baseline | ⬜ Not started | Day 2 | |
 | 3 | Learn linear transforms | ⬜ Not started | Day 3–4 | |
 | 4 | Cross-model transfer | ⬜ Not started | Day 4–5 | |
@@ -64,6 +64,17 @@ _Record any scope changes, hyperparameter choices, or assumptions here so result
 ---
 
 ## Daily log
+
+### Day 1 — Environment + behavioral data
+- **Requirements:** verified torch 2.3.1 / transformers 4.39.3 / sklearn 1.4 / etc. already present. Installed `timm` 1.0.27; removed a pre-existing broken `wandb` (protobuf mismatch) that timm imports. `rsatoolbox` deferred (needs sklearn≥1.6) — documented; Phase 5 only.
+- **Download:** pulled THINGS behavioral archive via Figshare API (412 MB), unzipped, ran `src/prepare_data.py`.
+  - Confirmed triplet convention: **0-based, odd-one-out in last column** (matches pipeline).
+  - Splits: train 4,120,663 / val 453,642 / test (noise-ceiling) 15,640. Index range validated [0,1853].
+  - Concept index: 1,854 names from `unique_id.txt` → `data/concepts.txt`.
+- Wired `config.py`/`data.py` to real files; `python src/data.py` smoke test passes; all module imports OK.
+- Added `src/organize_images.py` to pick one image/concept once THINGS images are downloaded.
+- **Blocker:** THINGS images need a manual license click-through (can't be scripted). Everything else is ready.
+- **Next:** user downloads THINGSplus images → `organize_images.py` → `extract_features.py` (Phase 1).
 
 ### Day 1 — Scaffold
 - Initialized git repo, pushed to `github.com/Sudarssan-N/VisionModal-HumalObjectSimilarity` (`main`).

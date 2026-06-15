@@ -18,7 +18,7 @@ import numpy as np
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 import config as C  # noqa: E402
-from src.data import load_triplets  # noqa: E402
+from src.data import load_split  # noqa: E402
 
 
 def cosine_sim_matrix(feats: np.ndarray) -> np.ndarray:
@@ -55,8 +55,8 @@ def bootstrap_ci(sim, triplets, n_boot=200, seed=C.SEED):
 
 
 def main():
-    triplets = load_triplets()
-    print(f"triplets: {triplets.shape}")
+    triplets = load_split("test")
+    print(f"test triplets: {triplets.shape}")
     results = {}
     feat_files = sorted(C.FEATURES_DIR.glob("*.npy"))
     if not feat_files:

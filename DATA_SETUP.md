@@ -3,25 +3,27 @@
 All data is publicly available. Two pieces: the **behavioral triplets** (scriptable)
 and the **images** (one-time manual click-through due to licensing).
 
-## 1. Behavioral odd-one-out triplets — scripted
+## 1. Behavioral odd-one-out triplets — scripted ✅ DONE
 
 ```bash
-python src/download_data.py --list      # see what's available
-python src/download_data.py             # download into data/raw/
+python src/download_data.py             # downloads osfstorage-archive.zip (412 MB) -> data/raw/
+cd data/raw && unzip -o osfstorage-archive.zip -d extracted
+cd extracted && unzip -o full_triplet_dataset.zip -d triplets
+cd ../../.. && python src/prepare_data.py   # -> data/concepts.txt, triplets_{train,val,test}.npy
 ```
 
-This pulls the "THINGS-data: Behavioral odd-one-out data and code" release from
-the public Figshare+ API (no login). After it finishes:
+What the release contains (confirmed):
+- `triplet_dataset/trainset.txt` — 4,120,663 triplets (90% of regular data)
+- `triplet_dataset/validationset.txt` — 453,642 triplets (10%)
+- `triplet_dataset/testset1.txt` — 15,640 noise-ceiling triplets (used as our test set)
+- `variables/unique_id.txt` — the 1,854 concept names in THINGS order
 
-- Unpack any archives under `data/raw/`.
-- Locate the triplet file (an `(M, 3)` integer array; ~4.7M rows) and the
-  concept list (1,854 rows). Point `config.py` at them:
-  - `TRIPLETS_FILE` → the triplet `.npy`/`.txt`
-  - `CONCEPTS_FILE` → `things_concepts.tsv` (or equivalent concept list)
+> Convention (confirmed from `dataset_description.txt`): triplets are **0-based**
+> and reordered as `[chosen_pair_a, chosen_pair_b, odd_one_out]`, i.e. the
+> **odd-one-out is the last column** — exactly what the pipeline expects.
 
-> Convention check: triplets must be stored with the **odd-one-out in the last
-> column**. If the source differs, fix the reordering once in
-> `src/data.py::load_triplets`.
+`prepare_data.py` validates the index range is `[0, 1853]` and writes fast `.npy`
+files; `config.py` already points at them.
 
 Sources:
 - Figshare+: https://plus.figshare.com/articles/dataset/THINGS-data_Behavioral_odd-one-out_data_and_code/20552784
@@ -34,28 +36,30 @@ We only need the **1,854 reference images** (one per concept), not the full 26k 
 
 **Preferred — THINGSplus CC0 images** (safe to reproduce in a paper):
 - Reachable via https://things-initiative.org/ → THINGSplus.
-- Download the license-free image set and place the 1,854 images in `data/images/`.
 
 **Alternative — original THINGS images** (research use only, requires agreeing to terms):
 - https://things-initiative.org/ → THINGS object images database.
 
-After placing images:
+The download is organized as one folder per concept
+(`object_images/aardvark/aardvark_01b.jpg`, ...). Use the helper to pick one
+representative image per concept and name it correctly:
 
 ```bash
-python src/data.py        # smoke test: prints concept count, triplet shape, split sizes
+python src/organize_images.py /path/to/THINGS/object_images
+# copies one image per concept -> data/images/{concept}.jpg
 ```
 
-`src/data.py::image_paths` resolves each concept to its file via a filename
-column in the concept TSV, falling back to a sorted directory listing. Make sure
-the image order matches the concept/triplet index order.
+The pipeline needs exactly **one image per concept**, named `{concept}.jpg`, so
+the image order matches the concept/triplet index order. `src/data.py::image_paths`
+resolves `data/images/{concept}.jpg`, falling back to a sorted directory listing.
 
 ## 3. Verify
 
 ```bash
 python src/data.py
 # concepts: 1854 rows ...
-# triplets: (4707..., 3) ...
-#   train / val / test counts printed
+# train: (4120663, 3) ... / val / test printed
 ```
 
-Once this passes, Phase 0 is done → run `src/extract_features.py`.
+Behavioral data already passes this. Once images are in `data/images/`,
+Phase 0 is fully done → run `src/extract_features.py`.

@@ -20,13 +20,12 @@ RESULTS_DIR = ROOT / "results"           # tables, figures, metrics json
 for _d in (DATA_DIR, IMAGE_DIR, FEATURES_DIR, RESULTS_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
-# Data files (filled in during Phase 0). Loaders auto-detect column layout,
-# so these only need to point at the right files on disk.
-CONCEPTS_FILE = DATA_DIR / "things_concepts.tsv"   # 1,854 concepts + image names
-TRIPLETS_FILE = DATA_DIR / "triplets.npy"          # (M, 3) int indices, odd-one-out last
-# If the source ships pre-split train/test triplets, drop them here instead:
-TRIPLETS_TRAIN_FILE = DATA_DIR / "triplets_train.npy"
-TRIPLETS_TEST_FILE = DATA_DIR / "triplets_test.npy"
+# Data files (produced by src/prepare_data.py from the THINGS release).
+# Triplets are 0-based with the odd-one-out in the LAST column.
+CONCEPTS_FILE = DATA_DIR / "concepts.txt"          # 1,854 concept names, THINGS order
+TRIPLETS_TRAIN_FILE = DATA_DIR / "triplets_train.npy"   # 4.12M
+TRIPLETS_VAL_FILE = DATA_DIR / "triplets_val.npy"       # 0.45M
+TRIPLETS_TEST_FILE = DATA_DIR / "triplets_test.npy"     # noise-ceiling set (testset1)
 
 # --------------------------------------------------------------------------- #
 # Reproducibility

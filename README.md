@@ -18,8 +18,11 @@ pip install -r requirements.txt
 
 ```bash
 # Phase 0 — data (see DATA_SETUP.md for the image click-through)
-python src/download_data.py
-python src/data.py                 # verify
+python src/download_data.py                       # behavioral archive (412 MB)
+#   unzip data/raw/osfstorage-archive.zip + full_triplet_dataset.zip
+python src/prepare_data.py                        # -> concepts.txt, triplets_{train,val,test}.npy
+python src/organize_images.py /path/to/THINGS     # one image per concept (after manual image DL)
+python src/data.py                                # verify
 
 # Phase 1 — extract embeddings for the model zoo (frozen, MPS)
 python src/extract_features.py
