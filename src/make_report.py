@@ -88,8 +88,8 @@ def hardest_categories(an, top=8) -> str:
 def robustness_table(rb) -> str:
     if not rb:
         return "_no robustness.json yet_"
-    rows = ["| Model | seeds (mean±std) | best λ | λ-test | image-split |",
-            "|---|---|---|---|---|"]
+    rows = ["| Model | seeds (mean±std) | best λ | image-disjoint | matched triplet | leakage gap |",
+            "|---|---|---|---|---|---|"]
     for m, r in rb.items():
         s = r.get("seeds", {})
         ls = r.get("lambda_sweep", {})
@@ -98,7 +98,9 @@ def robustness_table(rb) -> str:
         std = s.get("std")
         seedcell = f"{mean:.4f}±{std:.4f}" if mean is not None else "—"
         rows.append(f"| {m} | {seedcell} | {ls.get('best_lambda','—')} | "
-                    f"{_fmt(ls.get('best_test'))} | {_fmt(im.get('aligned_test'))} |")
+                    f"{_fmt(im.get('aligned_test'))} | "
+                    f"{_fmt(im.get('triplet_matched_test'))} | "
+                    f"{_fmt(im.get('leakage_gap'))} |")
     return "\n".join(rows)
 
 

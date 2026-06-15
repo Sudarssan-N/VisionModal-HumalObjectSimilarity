@@ -215,9 +215,35 @@ solved, while abstract/functional concepts resist linear alignment regardless of
 architecture.
 
 \paragraph{Robustness.} Aligned accuracies are stable across random seeds
-(std $<0.01$), insensitive to the L2 strength over $\{10^{-4},10^{-3},10^{-2}\}$,
-and essentially unchanged under a stricter \emph{image-disjoint} split in which
-train/validation/test share no images, ruling out a leakage artifact.
+(std $\le 0.004$; Table~\ref{tab:robust}) and insensitive to the L2 strength over
+$\{10^{-4},10^{-3},10^{-2}\}$ (variation $<0.02$, optimum at $10^{-3}$ for all
+models). We also stress-test generalization with a strict \emph{image-disjoint}
+split, in which train/validation/test share no images (so $\sim$27\% of triplets,
+those touching a held-out image, form the test set). Under this protocol aligned
+accuracy is 0.55--0.58---lower than the in-distribution noise-ceiling test, but
+still well above the zero-shot baselines (0.41--0.47)---confirming the transform
+generalizes to unseen images rather than memorizing image-specific structure.
+Part of this drop reflects the different test distribution (regular triplets,
+which have lower human agreement than the high-agreement noise-ceiling set rather
+than image leakage alone).
+
+\begin{table}[t]
+\centering
+\caption{Robustness of aligned odd-one-out accuracy: across seeds, and under a
+strict image-disjoint split (no shared images between train and test).}
+\label{tab:robust}
+\begin{tabular}{lcc}
+\toprule
+Model & Seeds (mean$\pm$std) & Image-disjoint \\
+\midrule
+CLIP ViT-B/16   & $0.605\pm0.001$ & 0.580 \\
+DINOv2 ViT-B/14 & $0.602\pm0.002$ & 0.555 \\
+ResNet-50       & $0.619\pm0.004$ & 0.549 \\
+SigLIP ViT-B/16 & $0.616\pm0.003$ & 0.582 \\
+ViT-B/16        & $0.594\pm0.003$ & 0.551 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Discussion and limitations}
 A single cheap linear transform recovers most of the human--model similarity gap

@@ -53,64 +53,91 @@ def main():
         print("No features. Run extract_features.py first.")
         return
 
+    only_split = os.environ.get("ONLY_SPLIT", "0") == "1"
+
+    # Image-disjoint split (shared across models). For an apples-to-apples
+    # leakage estimate we also build a size-matched RANDOM triplet-level split of
+    # the SAME pool, so image-split vs triplet-split differ ONLY in whether
+    # train/test share images (same distribution, same sizes).
+    img = split_triplets_by_image(train_t, seed=0)
+    rng = np.random.default_rng(0)
+    perm = rng.permutation(len(train_t))
+    n_tr, n_va, n_te = (len(img["train"]), len(img["val"]), len(img["test"]))
+    tri = {"train": train_t[perm[:n_tr]],
+           "val": train_t[perm[n_tr:n_tr + n_va]],
+           "test": train_t[perm[n_tr + n_va:n_tr + n_va + n_te]]}
+
     results = {}
     for name in names:
         X = np.load(C.FEATURES_DIR / f"{name}.npy").astype(np.float32)
         print(f"\n=== {name} (d={X.shape[1]}) ===")
         rec = {"dim": int(X.shape[1])}
 
-        # 1. multi-seed
-        seed_accs = []
-        for s in seeds:
-            out = train_aligner(X, train_t, val_t, lr=lr, weight_decay=1e-3,
-                                epochs=epochs, max_train=max_train, device=device,
-                                seed=s, verbose=False)
-            acc = evaluate_test(out["W"], X, out["mean"], out["std"], test_t, device)
-            seed_accs.append(acc)
-            print(f"  seed {s}: aligned test {acc:.4f}")
-        rec["seeds"] = {"accs": seed_accs,
-                        "mean": float(np.mean(seed_accs)),
-                        "std": float(np.std(seed_accs))}
+        if not only_split:
+            # 1. multi-seed
+            seed_accs = []
+            for s in seeds:
+                out = train_aligner(X, train_t, val_t, lr=lr, weight_decay=1e-3,
+                                    epochs=epochs, max_train=max_train,
+                                    device=device, seed=s, verbose=False)
+                acc = evaluate_test(out["W"], X, out["mean"], out["std"],
+                                    test_t, device)
+                seed_accs.append(acc)
+                print(f"  seed {s}: aligned test {acc:.4f}")
+            rec["seeds"] = {"accs": seed_accs,
+                            "mean": float(np.mean(seed_accs)),
+                            "std": float(np.std(seed_accs))}
 
-        # 2. lambda sweep
-        sweep = {}
-        best = (None, -1, -1)  # lambda, val, test
-        for wd in lambdas:
-            out = train_aligner(X, train_t, val_t, lr=lr, weight_decay=wd,
-                                epochs=epochs, max_train=max_train, device=device,
-                                seed=0, verbose=False)
-            test = evaluate_test(out["W"], X, out["mean"], out["std"], test_t, device)
-            sweep[f"{wd:g}"] = {"val": out["best_val"], "test": test}
-            print(f"  lambda {wd:g}: val {out['best_val']:.4f}  test {test:.4f}")
-            if out["best_val"] > best[1]:
-                best = (f"{wd:g}", out["best_val"], test)
-        rec["lambda_sweep"] = {"sweep": sweep,
-                               "best_lambda": best[0], "best_test": best[2]}
+            # 2. lambda sweep
+            sweep = {}
+            best = (None, -1, -1)  # lambda, val, test
+            for wd in lambdas:
+                out = train_aligner(X, train_t, val_t, lr=lr, weight_decay=wd,
+                                    epochs=epochs, max_train=max_train,
+                                    device=device, seed=0, verbose=False)
+                test = evaluate_test(out["W"], X, out["mean"], out["std"],
+                                     test_t, device)
+                sweep[f"{wd:g}"] = {"val": out["best_val"], "test": test}
+                print(f"  lambda {wd:g}: val {out['best_val']:.4f}  test {test:.4f}")
+                if out["best_val"] > best[1]:
+                    best = (f"{wd:g}", out["best_val"], test)
+            rec["lambda_sweep"] = {"sweep": sweep,
+                                   "best_lambda": best[0], "best_test": best[2]}
 
-        # 3. image-level split (no shared images across train/val/test)
-        img = split_triplets_by_image(train_t, seed=0)
-        out = train_aligner(X, img["train"], img["val"], lr=lr, weight_decay=1e-3,
-                            epochs=epochs, max_train=max_train, device=device,
-                            seed=0, verbose=False)
-        img_test = evaluate_test(out["W"], X, out["mean"], out["std"],
+        # 3. image-disjoint vs size-matched triplet-level split (isolates leakage)
+        out_i = train_aligner(X, img["train"], img["val"], lr=lr, weight_decay=1e-3,
+                              epochs=epochs, max_train=max_train, device=device,
+                              seed=0, verbose=False)
+        img_test = evaluate_test(out_i["W"], X, out_i["mean"], out_i["std"],
                                  img["test"], device)
-        rec["image_split"] = {"aligned_test": img_test,
-                              "n_test": int(len(img["test"]))}
-        print(f"  image-level split: aligned test {img_test:.4f} "
-              f"(n={len(img['test'])})")
+        out_t = train_aligner(X, tri["train"], tri["val"], lr=lr, weight_decay=1e-3,
+                              epochs=epochs, max_train=max_train, device=device,
+                              seed=0, verbose=False)
+        tri_test = evaluate_test(out_t["W"], X, out_t["mean"], out_t["std"],
+                                 tri["test"], device)
+        rec["image_split"] = {
+            "aligned_test": img_test,
+            "triplet_matched_test": tri_test,
+            "leakage_gap": tri_test - img_test,
+            "n_test": int(len(img["test"])),
+        }
+        print(f"  image-disjoint: {img_test:.4f}  vs  matched triplet-level: "
+              f"{tri_test:.4f}  (leakage gap {tri_test - img_test:+.4f})")
 
         results[name] = rec
 
     # Summary
     print(f"\n{'model':16s} {'seed mean±std':>16s} {'best λ':>8s} "
-          f"{'λ-test':>8s} {'img-split':>10s}")
-    print("-" * 64)
+          f"{'img-disjoint':>12s} {'matched-trip':>12s} {'gap':>8s}")
+    print("-" * 78)
     for n, r in results.items():
-        s = r["seeds"]
-        print(f"{n:16s} {s['mean']:.4f}±{s['std']:.4f}   "
-              f"{r['lambda_sweep']['best_lambda']:>8s} "
-              f"{r['lambda_sweep']['best_test']:8.4f} "
-              f"{r['image_split']['aligned_test']:10.4f}")
+        s = r.get("seeds")
+        seedcell = f"{s['mean']:.4f}±{s['std']:.4f}" if s else "   (skipped)  "
+        bl = r.get("lambda_sweep", {}).get("best_lambda", "—")
+        im = r["image_split"]
+        print(f"{n:16s} {seedcell:>16s} {bl:>8} "
+              f"{im['aligned_test']:12.4f} {im['triplet_matched_test']:12.4f} "
+              f"{im['leakage_gap']:+8.4f}")
 
     (C.RESULTS_DIR / "robustness.json").write_text(json.dumps(results, indent=2))
     print(f"\nsaved -> {C.RESULTS_DIR / 'robustness.json'}")
