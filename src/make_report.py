@@ -85,9 +85,27 @@ def hardest_categories(an, top=8) -> str:
     return "\n\n".join(out) if out else "_n/a_"
 
 
+def robustness_table(rb) -> str:
+    if not rb:
+        return "_no robustness.json yet_"
+    rows = ["| Model | seeds (mean±std) | best λ | λ-test | image-split |",
+            "|---|---|---|---|---|"]
+    for m, r in rb.items():
+        s = r.get("seeds", {})
+        ls = r.get("lambda_sweep", {})
+        im = r.get("image_split", {})
+        mean = s.get("mean")
+        std = s.get("std")
+        seedcell = f"{mean:.4f}±{std:.4f}" if mean is not None else "—"
+        rows.append(f"| {m} | {seedcell} | {ls.get('best_lambda','—')} | "
+                    f"{_fmt(ls.get('best_test'))} | {_fmt(im.get('aligned_test'))} |")
+    return "\n".join(rows)
+
+
 def main():
     zs, al = _load("zeroshot.json"), _load("aligned.json")
     tr, an = _load("transfer.json"), _load("analysis.json")
+    rb = _load("robustness.json")
 
     md = f"""# Results Report
 
@@ -108,6 +126,10 @@ Human noise ceiling = {C.HUMAN_NOISE_CEILING:.3f} · chance = {C.CHANCE:.3f}
 ## Hardest categories after alignment
 
 {hardest_categories(an)}
+
+## Robustness (seeds / λ sweep / image-disjoint split)
+
+{robustness_table(rb)}
 """
     out = C.RESULTS_DIR / "REPORT.md"
     out.write_text(md)

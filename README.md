@@ -41,7 +41,17 @@ python src/analysis.py
 
 # Assemble everything into results/REPORT.md
 python src/make_report.py
+
+# Robustness: seeds + λ sweep + image-disjoint split check
+python src/run_robustness.py && python src/make_report.py
 ```
+
+### Paper
+
+A NeurIPS-format preprint draft (with the real numbers) is in [`paper/`](paper/).
+Build it with `cd paper && make` (see `paper/README.md`). It compiles even
+without the official `neurips_2024.sty` (clean article fallback) and renders
+placeholder boxes if figures aren't copied yet.
 
 ### Validate the pipeline without images
 
@@ -84,7 +94,10 @@ src/align.py          core: cosine triplet loss + linear transform training
 src/train_transform.py Phase 3 — per-model alignment
 src/transfer.py       Phase 4 — cross-model transfer (PCA shared space)
 src/analysis.py       Phase 5 — category errors + RSA vs human SPoSE
+src/run_robustness.py seeds + λ sweep + image-disjoint split
+src/make_report.py    assemble results/*.json -> results/REPORT.md
 src/smoke_test.py     end-to-end validation without images
-notebooks/colab_run.ipynb   Colab runner
+notebooks/colab_run.ipynb   Colab runner (full pipeline + paper)
+paper/                NeurIPS-format LaTeX preprint
 data/ features/ results/    (gitignored)
 ```

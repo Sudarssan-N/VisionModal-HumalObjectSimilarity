@@ -114,19 +114,17 @@ def split_triplets_by_image(
     perm = rng.permutation(n_images)
     n_test = int(round(test_frac * n_images))
     n_val = int(round(val_frac * n_images))
-    test_imgs = set(perm[:n_test].tolist())
-    val_imgs = set(perm[n_test:n_test + n_val].tolist())
 
-    def partition(row: np.ndarray) -> str:
-        s = set(row.tolist())
-        if s & test_imgs:
-            return "test"
-        if s & val_imgs:
-            return "val"
-        return "train"
+    # Tier per image: 2=test, 1=val, 0=train. A triplet's tier is the max over
+    # its three images (test > val > train) — vectorized.
+    tier = np.zeros(n_images, dtype=np.int8)
+    tier[perm[:n_test]] = 2
+    tier[perm[n_test:n_test + n_val]] = 1
+    row_tier = tier[triplets].max(axis=1)
 
-    labels = np.array([partition(r) for r in triplets])
-    out = {k: triplets[labels == k] for k in ("train", "val", "test")}
+    out = {"train": triplets[row_tier == 0],
+           "val": triplets[row_tier == 1],
+           "test": triplets[row_tier == 2]}
     for k, v in out.items():
         print(f"  {k}: {len(v):,} triplets")
     return out

@@ -14,7 +14,7 @@ Living progress tracker. Append newest entries at the top of the **Daily log**. 
 | 3 | Learn linear transforms | ✅ Done | Day 3–4 | all 5 aligned to 88–92% of ceiling |
 | 4 | Cross-model transfer | ✅ Done | Day 4–5 | mostly model-specific; weak shared component |
 | 5 | Error analysis & RSA | ✅ Done | Day 5–6 | RSA + per-category done |
-| 6 | Writeup & figures | 🟡 Next | Day 7 | results complete; draft pending |
+| 6 | Writeup & figures | 🟡 In progress | Day 7 | LaTeX draft written; robustness script ready |
 
 Legend: ⬜ Not started · 🟡 In progress · ✅ Done · ⚠️ Blocked
 
@@ -87,6 +87,11 @@ _Record any scope changes, hyperparameter choices, or assumptions here so result
 ---
 
 ## Daily log
+
+### Day 2 — Robustness harness + paper draft
+- `src/run_robustness.py`: multi-seed (mean±std), λ sweep (best-by-val), and an **image-disjoint split** check (vectorized `split_triplets_by_image`); writes `robustness.json`, surfaced in `make_report.py`. Validated locally on synthetic features (image-split acc ≈ triplet-split acc → no leakage).
+- `paper/main.tex`: NeurIPS-format preprint with real numbers (Tables 1–2, RSA, categories), conditional `neurips_2024.sty` loading + placeholder figures so it compiles anywhere. `references.bib`, `Makefile`, `paper/README.md` added. Colab notebook now has robustness + paper-compile cells.
+- **Next:** run `run_robustness.py` on Colab to fill real robustness numbers; compile PDF; final editing pass.
 
 ### Day 2 — Full 5-model results complete (Phases 1–5 ✅)
 - Fixed extraction on newer transformers (`get_image_features` → ModelOutput) via `_as_tensor`. All 5 backbones extracted on Colab GPU.
