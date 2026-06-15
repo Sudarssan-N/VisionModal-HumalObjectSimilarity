@@ -13,8 +13,13 @@ transformers>=4.44
 
 # Analysis
 scikit-learn>=1.4
-rsatoolbox>=0.1.5
 matplotlib>=3.8
+# rsatoolbox is only needed for the Phase 5 RSA figure and requires
+# scikit-learn>=1.6 (it imports sklearn.utils.validation.validate_data).
+# Install it in a fresh env when you reach Phase 5, or compute RDM
+# correlations directly with scipy. Pinned out here to avoid forcing a
+# global sklearn upgrade.
+# rsatoolbox>=0.2.0  ; needs scikit-learn>=1.6
 
 # Data download (OSF)
 requests>=2.31
