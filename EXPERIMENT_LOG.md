@@ -14,7 +14,7 @@ Living progress tracker. Append newest entries at the top of the **Daily log**. 
 | 3 | Learn linear transforms | ✅ Done | Day 3–4 | all 5 aligned to 88–92% of ceiling |
 | 4 | Cross-model transfer | ✅ Done | Day 4–5 | mostly model-specific; weak shared component |
 | 5 | Error analysis & RSA | ✅ Done | Day 5–6 | RSA + per-category done |
-| 6 | Writeup & figures | 🟡 In progress | Day 7 | LaTeX draft written; robustness script ready |
+| 6 | Writeup & figures | ✅ Done | Day 7 | full NeurIPS paper drafted; compile in Colab |
 
 Legend: ⬜ Not started · 🟡 In progress · ✅ Done · ⚠️ Blocked
 
@@ -87,6 +87,12 @@ _Record any scope changes, hyperparameter choices, or assumptions here so result
 ---
 
 ## Daily log
+
+### Day 2 — Paper completed
+- Expanded `paper/main.tex` to a full submission-ready preprint: formal method with equations (decision rule, triplet CE loss, recovery fraction), 3-paragraph related work, 5 results subsections (Tables 1–4 + 2 figures), discussion/limitations/conclusion, and 2 appendices (implementation details, hardest-categories table).
+- Quantified transfer in-text: mean recovery **19.5%** (13–27%), CLIP strongest donor (0.423).
+- Verified LaTeX: all environments balanced, math delimiters even, all 13 citations resolve to `references.bib`. Compiles via Colab §6 (no local TeX).
+- **All 6 phases ✅ — one-week scope complete.**
 
 ### Day 2 — Robustness complete + paper draft
 - `src/run_robustness.py`: multi-seed (mean±std), λ sweep (best-by-val), and image-leakage isolation (**image-disjoint vs size-matched triplet-level split** of the same pool). `ONLY_SPLIT=1` fast mode. Writes `robustness.json`, surfaced in `make_report.py`.

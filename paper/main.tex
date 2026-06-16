@@ -27,7 +27,7 @@
 \newcommand{\figorbox}[1]{%
   \IfFileExists{figures/#1}{\includegraphics[width=\linewidth]{#1}}{%
   \IfFileExists{../results/#1}{\includegraphics[width=\linewidth]{#1}}{%
-  \fbox{\parbox[c][0.62\linewidth][c]{0.95\linewidth}{\centering\ttfamily #1\\(run pipeline + copy to figures/)}}}}%
+  \fbox{\parbox[c][0.55\linewidth][c]{0.93\linewidth}{\centering\ttfamily #1\\(run pipeline + copy to figures/)}}}}%
 }
 
 \title{How Far Can Cheap Linear Transforms Close the\\
@@ -42,132 +42,218 @@ Human--Model Visual Similarity Gap?}
 \maketitle
 
 \begin{abstract}
-Pretrained vision models encode object similarity differently from humans. We
-ask how much of this gap is a simple linear distortion of an otherwise
-human-like space, and whether the correction is shared across architectures.
-Using the THINGS odd-one-out benchmark (4.70M human triplet judgments over 1{,}854
+Pretrained vision models encode object similarity differently from humans. We ask
+how much of this gap is a simple linear distortion of an otherwise human-like
+space, and whether the required correction is shared across architectures. Using
+the THINGS odd-one-out benchmark (4.70M human triplet judgments over 1{,}854
 objects), we evaluate five frozen backbones spanning self-supervised (DINOv2),
 contrastive (CLIP, SigLIP), and supervised (ViT, ResNet-50) training, and learn a
 single L2-regularized linear transform per model with a triplet objective. We
-find three things. (i)~\textbf{Universal near-ceiling alignability}: a cheap
+report three findings. (i)~\textbf{Universal near-ceiling alignability}: a cheap
 linear transform lifts \emph{every} backbone to 88--92\% of the human noise
-ceiling (0.59--0.62 accuracy), erasing large initial differences between training
-paradigms; the largest gains accrue to the weakest starting points (DINOv2,
-$+0.20$). (ii)~\textbf{Model-specificity}: transforms transfer poorly across
-architectures---a transform learned on one model recovers only $\sim$15--25\% of
-the within-model gain on another---indicating the gap is mostly
-architecture/objective-specific rather than a single universal skew.
-(iii)~\textbf{A shared semantic ceiling}: the same abstract/functional categories
-(office supplies, furniture, musical instruments, medical equipment) resist linear
-alignment across all backbones. Results are stable across seeds, regularization
-strength, and a stricter image-disjoint split.
+ceiling (0.59--0.62 odd-one-out accuracy), erasing large initial differences
+between training paradigms; the largest gains accrue to the weakest starting
+points (DINOv2, $+0.20$). (ii)~\textbf{Model-specificity}: transforms transfer
+poorly across architectures---a transform learned on one model recovers on average
+only $\sim$20\% (13--27\%) of the within-model alignment gain on another---so the
+gap is largely architecture/objective-specific rather than a single universal
+skew. (iii)~\textbf{A shared semantic ceiling}: the same abstract/functional
+categories (office supplies, furniture, musical instruments, medical equipment)
+resist linear alignment across all backbones. Representational similarity to the
+human embedding mirrors (i): raw Spearman correlations of 0.14--0.42 converge to
+0.78--0.83 after alignment. Results are stable across seeds and regularization
+strength, and an image-disjoint analysis shows only a small (1--6 point)
+contribution from image-level leakage, with contrastive models the most
+concept-general. Code is fully scripted from public data.
 \end{abstract}
 
 \section{Introduction}
-Human alignment of internal representations is increasingly viewed as a driver of
-robustness, interpretability, and transfer in vision models
-\citep{sucholutsky2023alignment,muttenthaler2024aligning}. The THINGS initiative
-\citep{hebart2019things,hebart2023things} provides large-scale behavioral object
-similarity data through a triplet odd-one-out task, operationalizing human object
-similarity at scale. We use it to study a focused, practically relevant question:
-given \emph{frozen} embeddings from standard pretrained backbones, how far can a
-\emph{single cheap linear transform} push human--model alignment, and does such a
-transform transfer across architectures? A positive transfer result would imply
-the misalignment is largely a shared linear distortion; a negative one would
-imply deeper, model-specific structure.
+Whether the internal representations of vision models agree with human perception
+has become a central question for robustness, interpretability, and transfer
+\citep{sucholutsky2023alignment,muttenthaler2024aligning}. Models that better
+match human similarity structure tend to generalize and resist distribution shift
+more gracefully \citep{muttenthaler2024aligning}, yet off-the-shelf backbones
+still diverge substantially from human judgments. A practical question follows:
+\emph{can this divergence be cheaply corrected, and is the correction universal?}
+
+We study the simplest possible correction---a single linear transform of
+\emph{frozen} embeddings---against large-scale human behavior. The THINGS
+initiative \citep{hebart2019things,hebart2023things} provides 4.70M odd-one-out
+judgments over 1{,}854 everyday objects, operationalizing human object similarity
+at a scale that supports reliable training and evaluation. Given frozen features
+$x$ from a pretrained model, we ask: how far can a learned linear map $W$ push
+$Wx$ toward agreement with human odd-one-out choices, and does a $W$ learned on
+one architecture transfer to another? The transfer question is diagnostic: strong
+transfer would imply the misalignment is a shared linear distortion of a common,
+nearly human-like space; weak transfer would imply deeper, model-specific
+structure that no single linear patch can fix.
+
+We evaluate five backbones that deliberately span training objectives---DINOv2
+(self-supervised), CLIP and SigLIP (image--text contrastive), and ViT and
+ResNet-50 (ImageNet-supervised)---so that conclusions are not specific to one
+training recipe. Our pipeline is light: features are extracted once from frozen
+models, and only a low-parameter linear map is trained, making the entire study
+reproducible on a single commodity GPU from public data.
 
 \paragraph{Contributions.}
-(1)~A reproducible THINGS odd-one-out pipeline over a five-model zoo, fully
-scripted from public data. (2)~Evidence that a cheap linear transform brings all
-backbones to within 88--92\% of the human ceiling, with the biggest gains for the
-weakest models. (3)~A cross-model transfer analysis showing the alignment
-transform is mostly model-specific. (4)~A category-level error analysis revealing
-a shared semantic ceiling on linear alignment.
+\begin{itemize}
+\item A reproducible THINGS odd-one-out benchmark over a five-model zoo, fully
+scripted from public data (download, feature extraction, alignment, transfer,
+analysis, robustness).
+\item Evidence that a cheap linear transform brings \emph{all} backbones to
+88--92\% of the human noise ceiling, with the largest gains for the weakest
+models---initial paradigm differences are largely a linear artifact.
+\item A cross-model transfer analysis quantifying that learned transforms are
+mostly model-specific (mean $\sim$20\% recovery of the within-model gain).
+\item A category-level error analysis revealing a shared semantic ceiling, and an
+image-disjoint robustness analysis isolating a small leakage component that is
+smallest for contrastive models.
+\end{itemize}
 
 \section{Related work}
-\citet{muttenthaler2023human,muttenthaler2024aligning} show that linear
-transforms optimized against human similarity improve correspondence and
-downstream robustness; we complement this by directly contrasting architectures
-and quantifying cross-model transfer of the learned transform. The human
-similarity structure we target derives from the SPoSE/THINGS embedding
-\citep{hebart2020revealing,hebart2023things}. We compare representations using
-odd-one-out accuracy and representational similarity analysis
-\citep{kriegeskorte2008rsa}.
+\paragraph{Human alignment of representations.}
+\citet{muttenthaler2023human} show that linear ``transform'' probes optimized
+against human similarity improve correspondence to behavior, and
+\citet{muttenthaler2024aligning} extend this across abstraction levels and link
+alignment to downstream robustness. Our work is complementary in emphasis: rather
+than maximizing alignment for one model, we hold the alignment recipe fixed and
+\emph{contrast architectures}, asking whether the learned correction is shared.
+\citet{sucholutsky2023alignment} survey the broader notion of representational
+alignment and its measurement.
+
+\paragraph{The THINGS similarity structure.}
+The THINGS database \citep{hebart2019things} and its CC0 image extension
+\citep{stoinski2024thingsplus} provide the stimuli, while
+\citet{hebart2020revealing} derive a sparse, interpretable embedding (SPoSE) of
+human object similarity from triplet judgments, later scaled in
+\citet{hebart2023things}. We use the odd-one-out triplets as the supervision and
+evaluation signal, and the SPoSE embedding as a reference for representational
+similarity analysis.
+
+\paragraph{Comparing model and human representations.}
+Representational similarity analysis \citep{kriegeskorte2008rsa} compares systems
+through their pairwise (dis)similarity matrices and is widely used to relate model
+and brain/behavior. Odd-one-out accuracy offers a complementary, decision-level
+metric that avoids arbitrary thresholds. We report both, and additionally study
+the \emph{transfer} of alignment transforms across architectures, which to our
+knowledge is underexplored at this breadth on THINGS.
 
 \section{Method}
+
 \paragraph{Data.} We use the 1{,}854 THINGS reference objects with one
 copyright-free (CC0) image per concept \citep{stoinski2024thingsplus}, and the
-THINGS odd-one-out triplets \citep{hebart2023things}: 4.12M train, 0.45M
-validation, and a 15.6k noise-ceiling test set. Triplets are 0-indexed with the
-odd-one-out in the last position; the empirical human noise ceiling is $0.673$
-and chance is $1/3$.
+THINGS odd-one-out triplets \citep{hebart2023things}: 4.12M training, 0.45M
+validation, and a 15.6k held-out noise-ceiling test set (the repeatedly-sampled
+high-agreement triplets used to estimate human consistency). Triplets are
+0-indexed and stored with the chosen-similar pair first and the odd-one-out last.
+The empirical human noise ceiling is $0.673$ and chance is $1/3$.
 
-\paragraph{Backbones.} Five frozen models: DINOv2 ViT-B/14 (self-supervised),
-CLIP ViT-B/16 and SigLIP ViT-B/16 (contrastive), ViT-B/16 and ResNet-50
-(ImageNet-supervised) \citep{oquab2024dinov2,radford2021clip,zhai2023siglip,dosovitskiy2021vit,he2016resnet}.
-We extract one embedding per image (CLS/pooled features).
+\paragraph{Backbones.} Five frozen models spanning training objectives: DINOv2
+ViT-B/14 (self-supervised), CLIP ViT-B/16 and SigLIP ViT-B/16 (image--text
+contrastive), and ViT-B/16 and ResNet-50 (ImageNet-supervised)
+\citep{oquab2024dinov2,radford2021clip,zhai2023siglip,dosovitskiy2021vit,he2016resnet}.
+For each image we extract a single embedding (pooled/CLS feature), yielding a
+matrix $X\in\mathbb{R}^{1854\times d}$ per model with $d\in\{512,768,2048\}$.
 
-\paragraph{Odd-one-out scoring.} For a triplet with chosen-similar pair $(a,b)$
-and odd-one-out $o$, we score pairwise cosine similarities and predict the odd
-item as the one least similar to the other two; accuracy is agreement with the
+\paragraph{Odd-one-out decision rule.} For a triplet $(a,b,o)$ with human-chosen
+similar pair $(a,b)$ and odd-one-out $o$, we compute cosine similarities between
+embeddings and predict as the odd item the one least similar to the other two,
+equivalently choosing the most similar pair:
+\begin{equation}
+\hat{o} = \arg\min_{i\in\{a,b,o\}}\ \textstyle\sum_{j\neq i}\cos(z_i,z_j),
+\qquad
+\text{correct} \iff \cos(z_a,z_b) \ge \max\{\cos(z_a,z_o),\cos(z_b,z_o)\}.
+\end{equation}
+Accuracy is the fraction of triplets for which the predicted odd item matches the
 human choice.
 
-\paragraph{Linear alignment.} We learn a transform $W$ on standardized features
-with the SPoSE/VICE-style objective: with $z=Wx$ normalized, a 3-way softmax over
-pair similarities $\{s_{ab},s_{ao},s_{bo}\}$ (scaled by a learnable temperature)
-is trained by cross-entropy to prefer the human pair, with L2 regularization on
-$W$. We early-stop on validation accuracy.
+\paragraph{Linear alignment.} We standardize each feature dimension
+($\hat{x} = (x-\mu)/\sigma$ using training statistics) and learn a transform
+$z = W\hat{x}$, $W\in\mathbb{R}^{d\times d}$. Following the SPoSE/VICE
+formulation, we treat the triplet as a 3-way classification over candidate
+similar pairs. With $\bar z = z/\lVert z\rVert$ and a learnable temperature
+$\tau$, the logits and loss for a triplet are
+\begin{equation}
+\ell = \tau \big[\cos(\bar z_a,\bar z_b),\ \cos(\bar z_a,\bar z_o),\ \cos(\bar z_b,\bar z_o)\big],
+\qquad
+\mathcal{L} = \mathrm{CE}\!\left(\ell,\, y{=}0\right) + \lambda\lVert W\rVert_F^2,
+\end{equation}
+where target $y{=}0$ is the human-chosen pair $(a,b)$. We initialize $W$ at the
+identity (so training starts from the cosine zero-shot solution), optimize with
+Adam, and early-stop on validation accuracy. Cosine similarity with a learnable
+temperature keeps the softmax well-conditioned; using L2-normalized embeddings
+makes the aligned metric consistent with the zero-shot baseline.
 
 \paragraph{Cross-model transfer.} To compare transforms across differing
 dimensionalities, we standardize and PCA-reduce every model to a shared 256-d
-space, learn $W$ per model there, and evaluate accuracy when applying $W_{\text{src}}$
-to $\text{model}_{\text{tgt}}$'s features.
+space, learn $W$ per model there, and measure odd-one-out accuracy when applying a
+source transform $W_{\text{src}}$ to a target model's features
+$\hat z_{\text{tgt}}$. We summarize transfer by the \emph{recovery fraction},
+the share of a target's own-model alignment gain (over the $W{=}I$ baseline)
+captured by the average off-diagonal (transferred) transform:
+$\rho_t = (\bar a^{\text{off}}_t - a^{I}_t)/(a^{\text{own}}_t - a^{I}_t)$.
 
-\paragraph{RSA.} We correlate (Spearman) each model's $1854\times1854$ cosine
-similarity matrix with the human SPoSE similarity matrix, before and after
-alignment.
+\paragraph{RSA.} We correlate (Spearman) the upper triangle of each model's
+$1854\times1854$ cosine similarity matrix with that of the human SPoSE embedding,
+before and after alignment.
+
+\paragraph{Implementation.} Features are extracted once on a single GPU
+(frozen, no backpropagation through the backbone). The aligner uses Adam
+(learning rate $10^{-3}$, weight decay $\lambda{=}10^{-3}$), batch size 8192, up
+to 30 epochs with early-stopping patience 4. The transfer experiment uses
+shared dimensionality 256; robustness sweeps cap training at 1M triplets for
+speed. Splits use a fixed seed; the full configuration is in
+Appendix~\ref{app:impl}.
 
 \section{Results}
 
-\paragraph{A cheap transform reaches $\sim$90\% of the ceiling for all models.}
-Table~\ref{tab:main} shows zero-shot vs.\ aligned odd-one-out accuracy. Despite
-zero-shot accuracy ranging from 0.41 (DINOv2) to 0.47 (CLIP), all models converge
-to 0.59--0.62 after a single linear transform (88--92\% of the 0.673 ceiling).
-The largest improvements go to the weakest baselines, so initial differences
-between training paradigms are largely a linear artifact.
+\subsection{A cheap transform reaches \texorpdfstring{$\sim$}{~}90\% of the ceiling for all models}
+Table~\ref{tab:main} reports zero-shot vs.\ aligned odd-one-out accuracy. Out of
+the box, the contrastive models lead (CLIP $0.474$, SigLIP $0.468$), supervised
+models follow (ViT $0.436$, ResNet $0.433$), and DINOv2 trails ($0.408$)---the
+ordering reported in prior work. After a single linear transform, however, all
+five converge to $0.59$--$0.62$, i.e.\ 88--92\% of the human ceiling. The
+improvement is largest for the weakest baselines (DINOv2 $+0.200$, ResNet
+$+0.180$) and smallest for the already-strong CLIP ($+0.130$), so much of the
+apparent advantage of contrastive pretraining for human alignment is a linear
+artifact that a cheap map removes.
 
 \begin{table}[t]
 \centering
-\caption{Zero-shot vs.\ linearly-aligned odd-one-out accuracy on the THINGS
-test set (human ceiling $0.673$, chance $0.333$). $\Delta$ is aligned minus
-zero-shot; \% ceiling is aligned/ceiling.}
+\caption{Zero-shot vs.\ linearly-aligned odd-one-out accuracy on the THINGS test
+set (human ceiling $0.673$, chance $0.333$). $\Delta$ is aligned minus zero-shot;
+\% ceiling is aligned/ceiling. Rows sorted by aligned accuracy.}
 \label{tab:main}
 \begin{tabular}{llccccc}
 \toprule
 Model & Family & $d$ & Zero-shot & Aligned & $\Delta$ & \% ceiling \\
 \midrule
-SigLIP ViT-B/16 & contrastive & 768 & 0.468 & \textbf{0.616} & $+0.148$ & 91.6 \\
-ResNet-50       & supervised  & 2048& 0.433 & 0.613 & $+0.180$ & 91.1 \\
-DINOv2 ViT-B/14 & self-sup.   & 768 & 0.408 & 0.609 & $\mathbf{+0.200}$ & 90.5 \\
-CLIP ViT-B/16   & contrastive & 512 & \textbf{0.474} & 0.604 & $+0.130$ & 89.8 \\
-ViT-B/16        & supervised  & 768 & 0.436 & 0.593 & $+0.157$ & 88.0 \\
+SigLIP ViT-B/16 & contrastive & 768  & 0.468 & \textbf{0.616} & $+0.148$ & 91.6 \\
+ResNet-50       & supervised  & 2048 & 0.433 & 0.613 & $+0.180$ & 91.1 \\
+DINOv2 ViT-B/14 & self-sup.   & 768  & 0.408 & 0.609 & $\mathbf{+0.200}$ & 90.5 \\
+CLIP ViT-B/16   & contrastive & 512  & \textbf{0.474} & 0.604 & $+0.130$ & 89.8 \\
+ViT-B/16        & supervised  & 768  & 0.436 & 0.593 & $+0.157$ & 88.0 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\paragraph{Transforms are mostly model-specific.}
+\subsection{Transforms are mostly model-specific}
 Table~\ref{tab:transfer} reports the transfer matrix in the shared 256-d space.
-Own-model transforms (diagonal) reach 0.55--0.60, but transferred transforms
-(off-diagonal) reach only 0.39--0.47. While off-diagonal entries exceed the
-identity baseline (0.35--0.39), they recover only $\sim$15--25\% of the
-within-model alignment gain, with CLIP the strongest donor. The human--model gap
-is therefore largely architecture/objective-specific, with only a weak shared
-linear component (Fig.~\ref{fig:heatmap}).
+Own-model transforms (diagonal) reach $0.55$--$0.60$, but transferred transforms
+(off-diagonal) reach only $0.39$--$0.47$. Off-diagonal entries do exceed the
+identity baseline ($0.35$--$0.39$), so there is a weak shared linear component;
+but the average recovery fraction is only $19.5\%$ (range $13.0\%$ for SigLIP to
+$27.0\%$ for ResNet). CLIP is the strongest donor (mean transferred accuracy
+$0.423$), consistent with its image--text objective inducing a more
+concept-general space. Overall, the human--model gap is largely
+architecture/objective-specific rather than a single universal skew
+(Fig.~\ref{fig:heatmap}).
 
 \begin{table}[t]
 \centering
 \caption{Cross-model transfer (test accuracy, shared 256-d). Rows: source
-transform $W$; columns: target features. Last row: identity baseline ($W{=}I$).}
+transform $W$; columns: target features. Diagonal (own model) in bold; last row:
+identity baseline ($W{=}I$).}
 \label{tab:transfer}
 \begin{tabular}{lccccc}
 \toprule
@@ -184,57 +270,84 @@ ViT     & 0.466 & 0.390 & 0.413 & 0.409 & \textbf{0.551} \\
 \end{tabular}
 \end{table}
 
-\paragraph{RSA converges after alignment.}
-Raw Spearman RSA to the human embedding varies widely (DINOv2 0.14, ViT 0.15 vs.\
-CLIP 0.42), but after alignment all models converge to 0.78--0.83
-(Fig.~\ref{fig:rsa}). DINOv2 and supervised ViT are the most ``rotated away'' from
-human geometry yet are recoverable with a linear map.
+\subsection{Representational similarity converges after alignment}
+Raw Spearman RSA to the human SPoSE embedding varies widely
+(Table~\ref{tab:rsa}): DINOv2 ($0.144$) and supervised ViT ($0.146$) are the most
+``rotated away'' from human geometry, while CLIP ($0.419$) is closest. After
+alignment, all models converge to $0.78$--$0.83$. That a linear map recovers
+near-identical RSA from very different starting geometries reinforces
+Finding~(i): the human-relevant structure is linearly accessible in all
+backbones, even those whose untransformed geometry looks least human-like.
+
+\begin{table}[t]
+\centering
+\caption{Spearman RSA between model and human (SPoSE) similarity matrices, before
+and after alignment.}
+\label{tab:rsa}
+\begin{tabular}{lccccc}
+\toprule
+ & CLIP & DINOv2 & ResNet & SigLIP & ViT \\
+\midrule
+baseline & 0.419 & 0.144 & 0.287 & 0.319 & 0.146 \\
+aligned  & 0.811 & 0.793 & 0.831 & 0.828 & 0.775 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{figure}[t]
 \centering
 \begin{minipage}{0.48\textwidth}
 \centering
 \figorbox{transfer_heatmap.png}
-\caption{Cross-model transfer of alignment transforms (odd-one-out test acc).}
+\caption{Cross-model transfer of alignment transforms (odd-one-out test
+accuracy). The strong diagonal and weak off-diagonal show transforms are mostly
+model-specific.}
 \label{fig:heatmap}
 \end{minipage}\hfill
 \begin{minipage}{0.48\textwidth}
 \centering
 \figorbox{rsa.png}
-\caption{RSA to the human SPoSE embedding, before vs.\ after alignment.}
+\caption{RSA to the human SPoSE embedding, before vs.\ after alignment. Disparate
+raw correlations converge after a linear map.}
 \label{fig:rsa}
 \end{minipage}
 \end{figure}
 
-\paragraph{A shared semantic ceiling.}
-Grouping residual errors by the THINGS 27 high-level categories, the hardest
-categories after alignment are consistent across all five backbones:
+\subsection{A shared semantic ceiling}
+Grouping residual errors by the THINGS 27 high-level categories (assigning each
+test triplet the category of its odd-one-out item), the hardest categories
+\emph{after} alignment are strikingly consistent across all five backbones:
 \emph{office supply, furniture, kitchen tool, musical instrument, medical
-equipment}, and \emph{toy}. Concrete categories (animals, food, fruit) are nearly
-solved, while abstract/functional concepts resist linear alignment regardless of
-architecture.
+equipment}, and \emph{toy} (Appendix~\ref{app:cats}). Concrete, perceptually
+coherent categories (animals, food, fruit) are nearly solved, whereas abstract or
+functional categories---whose membership depends on use or context more than
+appearance---resist linear alignment regardless of architecture. The consistency
+across backbones indicates this residual is a property of the human--model gap
+itself, not of any single model, and marks a ceiling on what linear alignment can
+achieve.
 
-\paragraph{Robustness.} Aligned accuracies are stable across random seeds
-(std $\le 0.004$; Table~\ref{tab:robust}) and insensitive to the L2 strength over
+\subsection{Robustness}
+Aligned accuracies are stable across random seeds (std $\le 0.004$;
+Table~\ref{tab:robust}) and insensitive to the L2 strength over
 $\{10^{-4},10^{-3},10^{-2}\}$ (variation $<0.02$, optimum at $10^{-3}$ for all
 models). To quantify image-level leakage we compare a strict \emph{image-disjoint}
-split (train/validation/test share no images; $\sim$27\% of triplets form the
-test set) against a \emph{size-matched random triplet split} of the same pool, so
-the two differ only in whether train and test share images. The leakage gap is
-small (Table~\ref{tab:robust}): $+0.013$ to $+0.056$, i.e.\ aligned accuracy
-includes only a 1--6 point inflation from shared images. Even fully
-image-disjoint, aligned accuracy (0.55--0.58) far exceeds the zero-shot baselines
-(0.41--0.47), confirming the transform generalizes to unseen images.
-Interestingly, the contrastive models leak least (CLIP $+0.013$, SigLIP $+0.020$)
-while supervised/self-supervised models leak more (ResNet $+0.056$, DINOv2
-$+0.035$, ViT $+0.032$), suggesting contrastive alignment is more concept-general
-and less reliant on image-specific structure.
+split (train/validation/test share no images, so $\sim$27\% of triplets---those
+touching a held-out image---form the test set) against a \emph{size-matched random
+triplet split} of the same pool, so the two differ only in whether train and test
+share images. The leakage gap is small ($+0.013$ to $+0.056$): aligned accuracy
+includes only a 1--6 point inflation from shared images, and even fully
+image-disjoint, accuracy ($0.55$--$0.58$) far exceeds the zero-shot baselines
+($0.41$--$0.47$). Notably, contrastive models leak least (CLIP $+0.013$, SigLIP
+$+0.020$) while supervised/self-supervised models leak more (ViT $+0.032$, DINOv2
+$+0.035$, ResNet $+0.056$), suggesting contrastive alignment is more
+concept-general and less reliant on image-specific structure---echoing the
+transfer result.
 
 \begin{table}[t]
 \centering
-\caption{Robustness of aligned odd-one-out accuracy: stability across seeds, and
-an image-leakage estimate from an image-disjoint vs.\ size-matched triplet-level
-split of the same pool (gap = matched $-$ image-disjoint).}
+\caption{Robustness: stability across seeds, and an image-leakage estimate from an
+image-disjoint vs.\ size-matched triplet-level split of the same pool
+(gap $=$ matched $-$ image-disjoint).}
 \label{tab:robust}
 \begin{tabular}{lcccc}
 \toprule
@@ -249,26 +362,87 @@ ResNet-50       & $0.619\pm0.004$ & 0.549 & 0.606 & $+0.056$ \\
 \end{tabular}
 \end{table}
 
-\section{Discussion and limitations}
-A single cheap linear transform recovers most of the human--model similarity gap
-for every backbone we tested, but the required transform is largely
-model-specific and a shared semantic residual remains. This favors using
-inexpensive per-model alignment in practice while cautioning against a
-``universal'' alignment patch. Limitations: a single reference image per concept
-(visual variation is not modeled), a behavioral---not neural---alignment target,
-base-size models only, and linear maps only (nonlinear or hyperbolic maps may
-behave differently). Extensions include THINGS-fMRI/MEG neural alignment and
-geometry beyond Euclidean.
+\section{Discussion}
+Three observations cohere into a single picture. First, the \emph{level} of human
+alignment achievable by a cheap linear map is essentially the same ($\sim$90\% of
+ceiling) across self-supervised, contrastive, and supervised backbones: the
+human-relevant similarity structure is linearly present in all of them, and
+differences in zero-shot alignment mostly reflect how that structure is rotated
+and scaled, not whether it exists. Second, the \emph{direction} of the required
+correction is model-specific: transforms transfer weakly, so there is no single
+universal ``human-alignment patch''---the distortions are particular to each
+architecture/objective. Third, what linear alignment cannot fix is shared: the
+same abstract/functional categories remain hard everywhere, pointing to a
+semantic component of the gap that is not a linear distortion at all.
+
+\paragraph{Practical implications.} Because per-model linear alignment is cheap
+(frozen features, a low-parameter map) and recovers most of the gap, it is an
+attractive, low-risk way to make existing models more human-consistent without
+retraining. But the weak transfer cautions against reusing one model's alignment
+on another, and the semantic ceiling suggests that closing the final
+$\sim$10\% will require non-linear maps, richer supervision, or changes to
+pretraining---not a better linear probe.
+
+\section{Limitations}
+Our study uses a single CC0 reference image per concept, so it does not model
+within-concept visual variation; behavioral (not neural) alignment; base-size
+backbones only; and linear maps only. The image-disjoint analysis shows results
+are not driven by image leakage, but the headline numbers follow the standard
+triplet-level protocol and include a small (1--6 point) leakage component.
+Non-linear or hyperbolic maps, larger model scales, and neural targets
+(THINGS-fMRI/MEG) are natural extensions.
 
 \section{Conclusion}
 On THINGS odd-one-out, cheap linear transforms close most of the human--model
-gap uniformly across architectures, but do not transfer well between them, and
-leave a shared semantic ceiling---suggesting the residual misalignment is
-structural rather than a simple universal distortion.
+similarity gap uniformly across architectures, but they do not transfer well
+between models and leave a shared semantic ceiling. The residual misalignment is
+therefore structural and partly non-linear---specific to each model's geometry and
+to abstract semantics---rather than a single universal linear distortion.
 
-\paragraph{Reproducibility.} Code and scripts (data download, feature
-extraction, alignment, transfer, analysis, robustness) are available at
+\paragraph{Reproducibility.} All code and scripts (data download, feature
+extraction, alignment, transfer, analysis, robustness, and this paper) are
+available at
 \url{https://github.com/Sudarssan-N/VisionModal-HumalObjectSimilarity}.
+
+\appendix
+\section{Implementation details}\label{app:impl}
+Features are extracted once from frozen backbones (no backpropagation through the
+network) using each model's native preprocessing. Embeddings are standardized
+per-dimension with training statistics. The aligner is a single matrix
+$W\in\mathbb{R}^{d\times d}$ initialized to the identity, with a learnable
+temperature on the cosine logits; it is trained with Adam (learning rate
+$10^{-3}$), L2 weight decay $\lambda{=}10^{-3}$ on $W$ (none on the temperature),
+batch size 8192, for up to 30 epochs with early-stopping patience 4 on validation
+accuracy. For cross-model transfer, each model is standardized and PCA-reduced to
+256 dimensions before learning $W$ in the shared space. Robustness runs cap
+training at $10^{6}$ triplets for speed; seeds $\{0,1,2\}$ and
+$\lambda\in\{10^{-4},10^{-3},10^{-2}\}$ are swept. The image-disjoint split holds
+out 10\% of images each for validation and test; any triplet touching a held-out
+image is assigned to the corresponding partition.
+
+\section{Hardest categories after alignment}\label{app:cats}
+Table~\ref{tab:cats} lists, for each backbone, the lowest-accuracy THINGS
+high-level categories after alignment. Abstract/functional categories dominate
+across all models.
+
+\begin{table}[h]
+\centering
+\caption{Five lowest-accuracy categories after alignment, per model
+(category: aligned odd-one-out accuracy).}
+\label{tab:cats}
+\small
+\begin{tabular}{ll}
+\toprule
+Model & Hardest categories (aligned accuracy) \\
+\midrule
+CLIP    & office supply 0.30, furniture 0.31, kitchen tool 0.34, musical instr.\ 0.36, medical equip.\ 0.39 \\
+DINOv2  & kitchen tool 0.36, office supply 0.40, musical instr.\ 0.42, furniture 0.45, tool 0.45 \\
+ResNet  & medical equip.\ 0.26, furniture 0.37, office supply 0.38, part of car 0.47, toy 0.48 \\
+SigLIP  & medical equip.\ 0.36, office supply 0.37, musical instr.\ 0.43, kitchen tool 0.45, furniture 0.48 \\
+ViT     & office supply 0.30, furniture 0.31, kitchen tool 0.31, medical equip.\ 0.32, musical instr.\ 0.47 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \bibliographystyle{plainnat}
 \bibliography{references}
