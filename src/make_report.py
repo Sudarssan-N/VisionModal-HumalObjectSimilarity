@@ -34,11 +34,13 @@ def table1(zs, al) -> str:
         a = (al or {}).get(m, {})
         zsa = z.get("acc")
         ali = a.get("aligned_test")
+        std = a.get("aligned_test_std")
+        ali_cell = (f"{ali:.4f} ± {std:.4f}" if (ali is not None and std) else _fmt(ali))
         delta = (ali - zsa) if (ali is not None and zsa is not None) else None
         pct = a.get("pct_ceiling")
         d = a.get("dim") or z.get("dim")
         rows.append(f"| {m} | {FAMILY.get(m,'?')} | {d or '—'} | {_fmt(zsa)} | "
-                    f"{_fmt(ali)} | {_fmt(delta) if delta is not None else '—'} | "
+                    f"{ali_cell} | {_fmt(delta) if delta is not None else '—'} | "
                     f"{_fmt(pct,1)+'%' if pct else '—'} |")
     return "\n".join(rows)
 

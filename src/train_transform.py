@@ -7,6 +7,7 @@ held-out test set before vs after alignment.
 Run:  python src/train_transform.py                 # all models with features
       python src/train_transform.py clip_vitb16     # one model
       MAX_TRAIN=500000 EPOCHS=15 python src/train_transform.py   # quick pass
+      SEEDS=0,1,2 python src/train_transform.py      # full-data CIs (mean±std)
 Writes results/aligned.json and results/W_{model}.npy.
 """
 from __future__ import annotations
@@ -41,6 +42,10 @@ def main(names: list[str]):
     epochs = int(os.environ.get("EPOCHS", 30))
     max_train = os.environ.get("MAX_TRAIN")
     max_train = int(max_train) if max_train else None
+    seeds_env = os.environ.get("SEEDS")
+    seeds = [int(s) for s in seeds_env.split(",")] if seeds_env else [C.SEED]
+    if len(seeds) > 1:
+        print(f"seeds: {seeds} (reporting full-data mean±std)")
 
     train_t = load_split("train")
     val_t = load_split("val")
@@ -54,34 +59,52 @@ def main(names: list[str]):
             continue
         print(f"\n=== {name} ===")
         X = np.load(fp).astype(np.float32)
-        out = train_aligner(
-            X, train_t, val_t, lr=lr, weight_decay=wd, epochs=epochs,
-            max_train=max_train, device=device, seed=C.SEED,
-        )
-        # Identity (standardized) baseline on test for an apples-to-apples delta.
         d = X.shape[1]
+
+        per_seed, first = [], None
+        for s in seeds:
+            out = train_aligner(
+                X, train_t, val_t, lr=lr, weight_decay=wd, epochs=epochs,
+                max_train=max_train, device=device, seed=s,
+                verbose=(len(seeds) == 1),
+            )
+            acc_s = evaluate_test(out["W"], X, out["mean"], out["std"],
+                                  test_t, device)
+            per_seed.append(acc_s)
+            first = first or out
+            if len(seeds) > 1:
+                print(f"  seed {s}: aligned test {acc_s:.4f}")
+
+        # Identity (standardized) baseline on test for an apples-to-apples delta;
+        # standardization stats are seed-independent, so compute once.
         base_test = evaluate_test(np.eye(d, dtype=np.float32), X,
-                                  out["mean"], out["std"], test_t, device)
-        aligned_test = evaluate_test(out["W"], X, out["mean"], out["std"],
-                                     test_t, device)
-        np.save(C.RESULTS_DIR / f"W_{name}.npy", out["W"])
+                                  first["mean"], first["std"], test_t, device)
+        aligned_mean = float(np.mean(per_seed))
+        aligned_std = float(np.std(per_seed))
+        np.save(C.RESULTS_DIR / f"W_{name}.npy", first["W"])   # W from first seed
         results[name] = {
             "dim": int(d),
             "baseline_test": base_test,
-            "aligned_test": aligned_test,
-            "delta": aligned_test - base_test,
-            "best_val": out["best_val"],
-            "pct_ceiling": 100 * aligned_test / C.HUMAN_NOISE_CEILING,
+            "aligned_test": aligned_mean,            # mean over seeds (== value if 1 seed)
+            "aligned_test_std": aligned_std,
+            "aligned_test_seeds": per_seed,
+            "n_seeds": len(seeds),
+            "delta": aligned_mean - base_test,
+            "best_val": first["best_val"],
+            "pct_ceiling": 100 * aligned_mean / C.HUMAN_NOISE_CEILING,
         }
-        print(f"  test: baseline {base_test:.4f} -> aligned {aligned_test:.4f} "
-              f"(Δ {aligned_test - base_test:+.4f})")
+        pm = f" ± {aligned_std:.4f}" if len(seeds) > 1 else ""
+        print(f"  test: baseline {base_test:.4f} -> aligned {aligned_mean:.4f}{pm} "
+              f"(Δ {aligned_mean - base_test:+.4f})")
 
     if results:
-        print(f"\n{'model':18s} {'base':>7s} {'aligned':>8s} {'Δ':>7s} {'%ceil':>7s}")
-        print("-" * 52)
+        print(f"\n{'model':18s} {'base':>7s} {'aligned':>8s} {'std':>7s} "
+              f"{'Δ':>7s} {'%ceil':>7s}")
+        print("-" * 60)
         for k, v in results.items():
             print(f"{k:18s} {v['baseline_test']:7.4f} {v['aligned_test']:8.4f} "
-                  f"{v['delta']:+7.4f} {v['pct_ceiling']:6.1f}%")
+                  f"{v.get('aligned_test_std', 0.0):7.4f} {v['delta']:+7.4f} "
+                  f"{v['pct_ceiling']:6.1f}%")
         out_path = C.RESULTS_DIR / "aligned.json"
         out_path.write_text(json.dumps(results, indent=2))
         print(f"\nsaved -> {out_path}")
