@@ -1,7 +1,8 @@
 # Paper
 
 NeurIPS-format preprint draft (`main.tex`) for the THINGS odd-one-out alignment
-study. Numbers are filled from the real 5-model run; see `../results/REPORT.md`.
+study. Numbers are filled from the real 5-model run (Table 1: mean±std over seeds
+{0,1,2}); see `../results/REPORT.md` and `../EXPERIMENT_LOG.md` (review board).
 
 ## Build
 

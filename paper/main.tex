@@ -61,7 +61,8 @@ and supervised (ViT, ResNet-50) training, and ask how those transforms
 findings across a broad zoo: a cheap linear map lifts \emph{every} backbone to
 88--92\% of the human noise ceiling (0.59--0.62 odd-one-out accuracy), erasing
 large initial differences between training paradigms (largest gain for the weakest
-model, DINOv2 $+0.20$); and the same abstract/functional categories (office
+model, DINOv2 $+0.20$; Table~\ref{tab:main}: mean$\pm$std over three seeds); and
+the same abstract/functional categories (office
 supplies, furniture, musical instruments, medical equipment) resist linear
 alignment across all backbones. Our central contribution is a \emph{controlled}
 cross-model transfer analysis with a result we did not expect. Naively, a transform
@@ -269,33 +270,33 @@ the box, the contrastive models lead (CLIP $0.474$, SigLIP $0.468$), supervised
 models follow (ViT $0.436$, ResNet $0.433$), and DINOv2 trails ($0.408$)---the
 ordering reported in prior work. After a single linear transform, however, all
 five converge to $0.59$--$0.62$, i.e.\ 88--92\% of the human ceiling. The
-improvement is largest for the weakest baselines (DINOv2 $+0.200$, ResNet
-$+0.180$) and smallest for the already-strong CLIP ($+0.130$), so much of the
-apparent advantage of contrastive pretraining for human alignment is a linear
-artifact that a cheap map removes. This near-ceiling, architecture-insensitive
-alignability corroborates \citet{muttenthaler2023human,muttenthaler2024aligning}
-rather than being a new finding; the converged $0.59$--$0.62$ band is stable across
-seeds (std $\le 0.004$, Table~\ref{tab:robust}), though the per-model aligned values
-in Table~\ref{tab:main} are single-seed point estimates and the small between-model
-spread should be read with that caveat.
+improvement is largest for the weakest baselines (DINOv2 $+0.203$, ResNet
+$+0.179$) and smallest for the already-strong CLIP ($+0.130$), so the zero-shot
+spread across training paradigms largely collapses into a narrow converged band
+rather than leaving durable family-level differences. This near-ceiling,
+architecture-insensitive alignability corroborates
+\citet{muttenthaler2023human,muttenthaler2024aligning} rather than being a new
+finding. Table~\ref{tab:main} reports mean$\pm$std over three seeds on full data
+(per-model std $\le 0.003$), so the converged band is tight: the zero-shot family
+spread ($0.066$) collapses to a residual $0.024$ that, while several times the seed
+noise, is far smaller than the gap it replaces.
 
 \begin{table}[t]
 \centering
 \caption{Zero-shot vs.\ linearly-aligned odd-one-out accuracy on the THINGS test
 set (human ceiling $0.673$, chance $0.333$). $\Delta$ is aligned minus zero-shot;
-\% ceiling is aligned/ceiling. Rows sorted by aligned accuracy.
-\todo{convert ``Aligned'' to mean$\pm$std over seeds $\{0,1,2\}$ on full data after the
-\texttt{SEEDS=0,1,2} rerun.}}
+\% ceiling is aligned/ceiling. Aligned = mean$\pm$std over seeds $\{0,1,2\}$ on
+full data. Rows sorted by aligned accuracy.}
 \label{tab:main}
 \begin{tabular}{llccccc}
 \toprule
 Model & Family & $d$ & Zero-shot & Aligned & $\Delta$ & \% ceiling \\
 \midrule
-SigLIP ViT-B/16 & contrastive & 768  & 0.468 & \textbf{0.616} & $+0.148$ & 91.6 \\
-ResNet-50       & supervised  & 2048 & 0.433 & 0.613 & $+0.180$ & 91.1 \\
-DINOv2 ViT-B/14 & self-sup.   & 768  & 0.408 & 0.609 & $\mathbf{+0.200}$ & 90.5 \\
-CLIP ViT-B/16   & contrastive & 512  & \textbf{0.474} & 0.604 & $+0.130$ & 89.8 \\
-ViT-B/16        & supervised  & 768  & 0.436 & 0.593 & $+0.157$ & 88.0 \\
+SigLIP ViT-B/16 & contrastive & 768  & 0.468 & $\mathbf{0.616 \pm 0.001}$ & $+0.148$ & 91.5 \\
+ResNet-50       & supervised  & 2048 & 0.433 & $0.612 \pm 0.002$ & $+0.179$ & 91.0 \\
+DINOv2 ViT-B/14 & self-sup.   & 768  & 0.408 & $0.612 \pm 0.003$ & $\mathbf{+0.203}$ & 90.9 \\
+CLIP ViT-B/16   & contrastive & 512  & \textbf{0.474} & $0.604 \pm 0.001$ & $+0.130$ & 89.7 \\
+ViT-B/16        & supervised  & 768  & 0.436 & $0.592 \pm 0.002$ & $+0.155$ & 87.9 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -435,8 +436,8 @@ itself, not of any single model, and marks a ceiling on what linear alignment ca
 achieve.
 
 \subsection{Robustness}
-Aligned accuracies are stable across random seeds (std $\le 0.004$;
-Table~\ref{tab:robust}) and insensitive to the L2 strength over
+Aligned accuracies are stable across random seeds (std $\le 0.003$ in
+Table~\ref{tab:main}; Table~\ref{tab:robust}) and insensitive to the L2 strength over
 $\{10^{-4},10^{-3},10^{-2}\}$ (variation $<0.02$, optimum at $10^{-3}$ for all
 models). To quantify image-level leakage we compare a strict \emph{image-disjoint}
 split (train/validation/test share no images, so $\sim$27\% of triplets---those
@@ -461,11 +462,11 @@ image-disjoint vs.\ size-matched triplet-level split of the same pool
 \toprule
 Model & Seeds (mean$\pm$std) & Image-disjoint & Matched-triplet & Leakage gap \\
 \midrule
-CLIP ViT-B/16   & $0.605\pm0.001$ & 0.580 & 0.593 & $+0.013$ \\
-SigLIP ViT-B/16 & $0.616\pm0.003$ & 0.582 & 0.602 & $+0.020$ \\
-ViT-B/16        & $0.594\pm0.003$ & 0.551 & 0.583 & $+0.032$ \\
-DINOv2 ViT-B/14 & $0.602\pm0.002$ & 0.555 & 0.590 & $+0.035$ \\
-ResNet-50       & $0.619\pm0.004$ & 0.549 & 0.606 & $+0.056$ \\
+CLIP ViT-B/16   & $0.604\pm0.001$ & 0.580 & 0.593 & $+0.013$ \\
+SigLIP ViT-B/16 & $0.616\pm0.001$ & 0.582 & 0.602 & $+0.020$ \\
+ViT-B/16        & $0.592\pm0.002$ & 0.551 & 0.583 & $+0.032$ \\
+DINOv2 ViT-B/14 & $0.612\pm0.003$ & 0.555 & 0.590 & $+0.035$ \\
+ResNet-50       & $0.612\pm0.002$ & 0.549 & 0.606 & $+0.056$ \\
 \bottomrule
 \end{tabular}
 \end{table}

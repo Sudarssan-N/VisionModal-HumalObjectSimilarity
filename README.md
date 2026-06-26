@@ -23,9 +23,12 @@ behind.
    backbone to **88–92% of the human noise ceiling** (0.59–0.62 accuracy), erasing
    large initial differences between training paradigms. The biggest gains go to
    the weakest starting points (DINOv2 **+0.20**).
-2. **The transform is mostly model-specific.** A transform learned on one model
-   recovers on average only **~20% (13–27%)** of the within-model gain on another
-   → the gap is architecture/objective-specific, *not* a single universal skew.
+2. **The correction is largely *shared* across architectures** (the main result).
+   Naive cross-model transfer looks model-specific (**~19%** recovery), but that's a
+   PCA-basis artifact: after a rigid, label-free orthogonal-Procrustes alignment into
+   a common frame, a transform learned on one model recovers **~88% (84–92%)** of
+   another's gain → an approximately *universal* linear "human-alignment direction,"
+   not a per-model patch.
 3. **A shared semantic ceiling.** The same abstract/functional categories (office
    supplies, furniture, musical instruments, medical equipment) resist alignment
    across all five models — a residual that linear maps can't fix.
@@ -38,11 +41,24 @@ behind.
 
 | Model | Family | Zero-shot | Aligned | Δ | % ceiling |
 |---|---|---|---|---|---|
-| SigLIP ViT-B/16 | contrastive | 0.468 | **0.616** | +0.148 | 91.6% |
-| ResNet-50 | supervised | 0.433 | 0.613 | +0.180 | 91.1% |
-| DINOv2 ViT-B/14 | self-sup. | 0.408 | 0.609 | **+0.200** | 90.5% |
-| CLIP ViT-B/16 | contrastive | 0.474 | 0.604 | +0.130 | 89.8% |
-| ViT-B/16 | supervised | 0.436 | 0.593 | +0.157 | 88.0% |
+| SigLIP ViT-B/16 | contrastive | 0.468 | **0.616 ± 0.001** | +0.148 | 91.5% |
+| ResNet-50 | supervised | 0.433 | 0.612 ± 0.002 | +0.179 | 91.0% |
+| DINOv2 ViT-B/14 | self-sup. | 0.408 | 0.612 ± 0.003 | **+0.203** | 90.9% |
+| CLIP ViT-B/16 | contrastive | 0.474 | 0.604 ± 0.001 | +0.130 | 89.7% |
+| ViT-B/16 | supervised | 0.436 | 0.592 ± 0.002 | +0.155 | 87.9% |
+
+_Aligned = mean±std over seeds {0,1,2} on full data._
+
+**Cross-model transfer (the main result).** Mean recovery of another model's
+alignment gain — naive vs. after the orthogonal-Procrustes basis-alignment control:
+
+| Transfer setting | Mean recovery | Range |
+|---|---|---|
+| Raw (independent PCA) | 0.194 | 0.129–0.269 |
+| **Basis-aligned (Procrustes)** | **0.881** | 0.844–0.916 |
+
+The 19%→88% jump shows the apparent model-specificity is a PCA-basis artifact — the
+human-alignment correction is largely shared across architectures.
 
 **RSA to the human embedding** converges after alignment (Spearman):
 
@@ -51,7 +67,7 @@ behind.
 | baseline | 0.42 | 0.14 | 0.29 | 0.32 | 0.15 |
 | aligned | 0.81 | 0.79 | 0.83 | 0.83 | 0.78 |
 
-**Robustness.** Stable across seeds (std ≤ 0.004) and L2 strength; an image-disjoint
+**Robustness.** Stable across seeds (std ≤ 0.003) and L2 strength; an image-disjoint
 analysis shows only a small (1–6 pt) image-leakage component, smallest for the
 contrastive models.
 
