@@ -30,10 +30,6 @@
   \fbox{\parbox[c][0.55\linewidth][c]{0.93\linewidth}{\centering\ttfamily #1\\(run pipeline + copy to figures/)}}}}%
 }
 
-% Visible placeholder for numbers to be filled in from the Colab run (basis-aligned
-% transfer). Never ship a TODO; replace each with the value src/transfer.py prints.
-\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
-
 \title{How Far Can Cheap Linear Transforms Close the\\
 Human--Model Visual Similarity Gap?}
 
@@ -153,9 +149,6 @@ transfer experiment plus an orthogonal-Procrustes basis-alignment control that p
 work does not perform.
 \citet{sucholutsky2023alignment} survey the broader notion of representational
 alignment and its measurement.
-% TODO (optional): cite the same per-model $W$ + Frobenius-regularized recipe in
-% arXiv:2409.06362 (concept convexity) and arXiv:2510.23321 (flexible evaluation)
-% to sharpen lineage -- add verified bib entries before including.
 
 \paragraph{The THINGS similarity structure.}
 The THINGS database \citep{hebart2019things} and its CC0 image extension
@@ -174,6 +167,20 @@ metric that avoids arbitrary thresholds. We report both, and additionally study
 the \emph{transfer} of alignment transforms across architectures---with a
 basis-alignment control so the comparison is not an artifact of independently-fit
 shared spaces---which to our knowledge is underexplored at this breadth on THINGS.
+
+\paragraph{Aligning representational spaces.} The tool we use to remove the basis
+confound---orthogonal Procrustes alignment of two row-matched embeddings
+\citep{schonemann1966procrustes}---is a standard way to relate independently-learned
+representations. In neuroscience, \emph{hyperalignment} uses exactly this rigid-map
+family to bring different subjects' representational spaces into a common frame
+\citep{haxby2011hyperalignment}, and the observation that independently-trained models
+are increasingly relatable by such simple maps is the substance of the Platonic
+Representation Hypothesis \citep{huh2024platonic}, which argues that large models
+converge toward a shared statistical representation of the world. Our contribution is
+not the alignment machinery but its use as a \emph{control}: applying a label-free,
+distortion-free orthogonal map to separate genuine model-specific structure from
+arbitrary basis mismatch, and finding that doing so overturns the apparent
+model-specificity of human-alignment transforms on THINGS.
 
 \section{Method}\label{sec:method}
 
@@ -240,9 +247,13 @@ this confound with an orthogonal-Procrustes rotation: for each (source, target) 
 we solve
 \begin{equation}
 R^\star = \arg\min_{R^\top R = I}\ \big\lVert \hat Z_{\text{tgt}} R - \hat Z_{\text{src}} \big\rVert_F
-= U V^\top,\quad\text{where } \hat Z_{\text{tgt}}^\top \hat Z_{\text{src}} = U \Sigma V^\top,
+= U V^\top,\quad\text{where } \hat Z_{\text{tgt}}^\top \hat Z_{\text{src}} = U \Sigma V^\top.
 \end{equation}
-rotate the target into the source frame, and re-measure the accuracy of
+Here $\hat Z_{\text{src}}, \hat Z_{\text{tgt}} \in \mathbb{R}^{1854\times 256}$ are the
+standardized, PCA-reduced concept-embedding matrices of the two models, one row per
+THINGS concept in a common row order, so $R^\star$ is fit on the correspondence of all
+$1{,}854$ concepts. We then
+rotate the target into the source frame and re-measure the accuracy of
 $W_{\text{src}}$ on $\hat Z_{\text{tgt}} R^\star$. The fit uses only the geometric
 concept correspondence (no human judgments), and being orthogonal it cannot rescale
 or distort the geometry---so it neutralizes the arbitrary basis without performing
@@ -318,7 +329,8 @@ representational difference. Applying the orthogonal-Procrustes alignment of
 Section~\ref{sec:method} (\emph{Basis-alignment control})---a rigid, distortion-free
 rotation fit on the shared concepts using no human labels---before transfer raises mean
 recovery from $19.4\%$ to $\mathbf{88.1\%}$ (per model $84.4\%$--$91.6\%$;
-Table~\ref{tab:recovery}, Fig.~\ref{fig:heatmap}). After this alignment, a transform
+Table~\ref{tab:recovery}, Fig.~\ref{fig:heatmap}; full matrix in
+Table~\ref{tab:transfer-aligned}). After this alignment, a transform
 learned on \emph{any} backbone recovers most of \emph{any other} backbone's alignment
 gain: off-diagonal accuracies ($0.52$--$0.59$) come within a few points of the
 own-model diagonal ($0.55$--$0.60$). The human-alignment correction is therefore
@@ -328,12 +340,18 @@ only a small residual ($\sim$12\%) that is genuinely architecture-specific.
 \paragraph{The shared component is real, not an artifact of the rotation.} An orthogonal
 map is distortion-free---it preserves all pairwise distances and angles---so it cannot
 inject human-relevant structure the target lacks; it only re-orients existing structure,
-and it is fit with no access to human judgments. Two synthetic checks confirm it behaves
-correctly: when all models are noisy linear read-outs of a single \emph{shared} latent,
-the procedure recovers that structure (raw $\sim$25\%, aligned $\sim$90\%); and
-\emph{shuffling} the concept correspondence before fitting the rotation collapses the
-gain back toward the raw level, showing the recovery comes from genuine cross-model
-correspondence rather than the rotation's free parameters. Hence $88\%$ is, if anything,
+and it is fit with no access to human judgments. Two synthetic controls confirm the
+recovery tracks genuine shared structure rather than the rotation's free parameters
+(Appendix~\ref{app:synthetic}, Table~\ref{tab:synthetic}). When all five models are
+\emph{different} noisy linear read-outs of one shared latent---so the human-relevant
+structure is shared by construction---naive transfer again looks partly model-specific
+(raw recovery $37\%$), but the Procrustes alignment recovers essentially all of it
+($98\%$). Crucially, refitting the rotation on a \emph{shuffled} concept correspondence
+does not merely weaken recovery but drives it \emph{below} the identity baseline
+($-18\%$): a rotation fit to the wrong correspondence actively destroys transfer, so the
+$98\%$ cannot be manufactured by the map's free parameters. That the real-model recovery
+($88\%$) sits just below this fully-shared synthetic ceiling ($98\%$) is consistent with
+a small but genuine architecture-specific residual. The $88\%$ is therefore, if anything,
 a conservative (rigid-map) lower bound on how shared the correction is
 (Fig.~\ref{fig:heatmap}).
 
@@ -492,8 +510,10 @@ semantic component of the gap that is not a linear distortion at all.
 (frozen features, a low-parameter map) and recovers most of the gap, it is an
 attractive, low-risk way to make existing models more human-consistent without
 retraining. And because the correction is largely shared, a transform learned once
-can be re-used on a new backbone after only a cheap, label-free basis alignment---no
-fresh human data required. The semantic ceiling, however, suggests that closing the
+can be re-used on a new backbone after only a cheap, label-free basis alignment,
+recovering most ($\sim$88\%) of a freshly-fit transform's gain with no new human
+data---though the $\sim$12\% residual means a per-model fit is still best when
+labels are available. The semantic ceiling, however, suggests that closing the
 final $\sim$10\% will require non-linear maps, richer supervision, or changes to
 pretraining---not a better linear probe.
 
@@ -514,8 +534,9 @@ extensions.
 On THINGS odd-one-out, cheap linear transforms close most of the human--model
 similarity gap uniformly across architectures, and---once models are placed in a
 common coordinate frame---the \emph{same} correction transfers between them
-($88\%$ recovery): the human-alignment direction is largely shared, not
-model-specific as a naive transfer suggests. What remains is a shared semantic ceiling
+($88\%$ recovery): the human-alignment direction is largely shared---modulo a small
+($\sim$12\%) architecture-specific residual---rather than model-specific as a naive
+transfer suggests. What remains is a shared semantic ceiling
 on abstract/functional categories, indicating that the last $\sim$10\% of the gap is
 non-linear and common to all models rather than a per-model linear distortion.
 
@@ -560,6 +581,77 @@ DINOv2  & kitchen tool 0.36, office supply 0.40, musical instr.\ 0.42, furniture
 ResNet  & medical equip.\ 0.26, furniture 0.37, office supply 0.38, part of car 0.47, toy 0.48 \\
 SigLIP  & medical equip.\ 0.36, office supply 0.37, musical instr.\ 0.43, kitchen tool 0.45, furniture 0.48 \\
 ViT     & office supply 0.30, furniture 0.31, kitchen tool 0.31, medical equip.\ 0.32, musical instr.\ 0.47 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Post-Procrustes transfer matrix}\label{app:transfer-aligned}
+Table~\ref{tab:transfer-aligned} gives the full basis-aligned transfer matrix
+summarized by the recovery fractions in Table~\ref{tab:recovery}. After the
+orthogonal-Procrustes alignment every off-diagonal entry rises to within a few points
+of the own-model diagonal, and no source/target pair resists transfer: the weakest
+per-target recovery is still $84\%$ (ViT).
+
+\begin{table}[h]
+\centering
+\caption{Cross-model transfer \emph{after} the orthogonal-Procrustes basis alignment
+(test accuracy, shared 256-d). Rows: source transform $W$ applied in each target's
+rotated frame; columns: target features. Diagonal (own model, $R{=}I$) in bold; compare
+with the raw matrix in Table~\ref{tab:transfer} (identity baselines are unchanged).}
+\label{tab:transfer-aligned}
+\begin{tabular}{lccccc}
+\toprule
+$W$ \textbackslash{} target & CLIP & DINOv2 & ResNet & SigLIP & ViT \\
+\midrule
+CLIP    & \textbf{0.593} & 0.546 & 0.540 & 0.589 & 0.527 \\
+DINOv2  & 0.578 & \textbf{0.576} & 0.543 & 0.583 & 0.527 \\
+ResNet  & 0.571 & 0.543 & \textbf{0.566} & 0.582 & 0.523 \\
+SigLIP  & 0.586 & 0.558 & 0.544 & \textbf{0.605} & 0.518 \\
+ViT     & 0.569 & 0.552 & 0.527 & 0.568 & \textbf{0.550} \\
+\midrule
+\textit{baseline} & 0.390 & 0.361 & 0.353 & 0.375 & 0.379 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Synthetic controls for the basis-alignment recovery}\label{app:synthetic}
+\paragraph{Generative protocol.} Let $Z\in\mathbb{R}^{1854\times 66}$ be the
+standardized SPoSE human embedding---the \emph{shared latent}. For each of $M{=}5$
+synthetic models we draw a random read-out $A_m\in\mathbb{R}^{66\times d_m}$ with
+i.i.d.\ $\mathcal{N}(0,1)$ entries, $d_m\in\{128,160,192,224,256\}$, and set
+$X_m = s\,(Z A_m) + \sigma_m\,\varepsilon$, with signal $s{=}0.25$,
+$\varepsilon\sim\mathcal{N}(0,I)$, and per-model noise $\sigma_m$ increasing from $0.50$
+to $0.74$. Every model is thus the \emph{same} latent under a different linear basis
+plus independent noise, so the human-relevant structure is shared by construction.
+Supervision and evaluation use the \emph{real} THINGS triplets (the human choices SPoSE
+was fit to). We then run the identical Phase-4 pipeline---independent PCA to $128$-d, a
+per-model transform $W_m$, and raw vs.\ Procrustes vs.\ shuffled-correspondence
+transfer---and report the recovery fraction $\bar\rho$ of the main text. The run needs
+only \texttt{data/spose\_human.npy} and the triplets (no images) and completes on CPU in
+a few minutes (\texttt{src/synthetic\_controls.py}).
+
+\paragraph{Result (Table~\ref{tab:synthetic}).} On data whose structure is fully shared,
+naive transfer still recovers only $37\%$ (the independently-fit PCA bases again hide the
+shared structure), while the Procrustes alignment recovers $98\%$---confirming the
+control surfaces shared structure rather than fabricating it. Refitting the rotation on a
+\emph{shuffled} concept correspondence collapses recovery to $-18\%$ (below the identity
+baseline): a rotation fit to the wrong row-matching actively destroys transfer, ruling
+out the worry that the orthogonal map's free parameters could manufacture the recovery.
+
+\begin{table}[h]
+\centering
+\caption{Synthetic controls. Mean recovery fraction $\bar\rho$ (and per-model range over
+the five synthetic models) when the models share a latent by construction. Procrustes on
+the true concept correspondence recovers nearly all the shared structure; shuffling the
+correspondence drives recovery below the identity baseline.}
+\label{tab:synthetic}
+\begin{tabular}{lcc}
+\toprule
+Setting & Mean recovery $\bar\rho$ & Range \\
+\midrule
+Raw (independent PCA)                & 0.372 & 0.322--0.452 \\
+Procrustes (true correspondence)     & \textbf{0.979} & 0.958--1.011 \\
+Procrustes (shuffled correspondence) & $-0.179$ & $-0.213$ to $-0.125$ \\
 \bottomrule
 \end{tabular}
 \end{table}

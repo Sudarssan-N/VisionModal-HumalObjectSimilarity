@@ -58,7 +58,11 @@ alignment gain — naive vs. after the orthogonal-Procrustes basis-alignment con
 | **Basis-aligned (Procrustes)** | **0.881** | 0.844–0.916 |
 
 The 19%→88% jump shows the apparent model-specificity is a PCA-basis artifact — the
-human-alignment correction is largely shared across architectures.
+human-alignment correction is largely shared across architectures. Two synthetic
+controls back this up: when five models are different noisy read-outs of one shared
+latent, Procrustes recovers 98% (vs. 37% raw), and shuffling the concept
+correspondence collapses recovery below baseline (−18%) — so the recovery reflects
+genuine shared structure, not the rotation's free parameters (`src/synthetic_controls.py`).
 
 **RSA to the human embedding** converges after alignment (Spearman):
 

@@ -113,6 +113,36 @@ def main():
     mean_raw = float(np.nanmean(list(rho_raw.values())))
     mean_aligned = float(np.nanmean(list(rho_aligned.values())))
 
+    # --- Concept-disjoint Procrustes control -------------------------------- #
+    # The basis-aligned matrix above fits R on *all* 1,854 concepts and then tests
+    # transfer on triplets over those same concepts, so the rotation can in
+    # principle borrow evaluation-concept geometry. Here we fit R on a held-out
+    # subset of concepts and evaluate transfer only on test triplets whose three
+    # items all fall in the *complementary* subset -- clean train/test separation
+    # for the rotation. (W itself is the normal per-model fit; only R is held out.)
+    holdout = float(os.environ.get("CONCEPT_HOLDOUT", 0.5))
+    N = shared[names[0]].shape[0]
+    perm = np.random.default_rng(C.SEED).permutation(N)
+    n_fit = int(round(holdout * N))
+    fit_idx = torch.tensor(perm[:n_fit], dtype=torch.long, device=device)  # fit R here
+    eval_set = set(int(i) for i in perm[n_fit:])                           # test here
+    mask = np.fromiter((a in eval_set and b in eval_set and o in eval_set
+                        for a, b, o in test_t), bool, len(test_t))
+    test_dj = torch.tensor(test_t[mask], dtype=torch.long, device=device)
+    n_dj = int(mask.sum())
+
+    base_dj = {n: accuracy(identity[n], shared[n], test_dj) for n in names}
+    M_dj = np.zeros((p, p))
+    for a, src in enumerate(names):
+        for b, tgt in enumerate(names):
+            if a == b:
+                M_dj[a, b] = accuracy(W[src], shared[tgt], test_dj)
+            else:
+                R = procrustes_rotation(shared[tgt][fit_idx], shared[src][fit_idx])
+                M_dj[a, b] = accuracy(W[src], shared[tgt] @ R, test_dj)
+    rho_dj = _recovery_fractions(M_dj, base_dj, names)
+    mean_dj = float(np.nanmean(list(rho_dj.values())))
+
     # Report
     def _print_matrix(title, M):
         print(f"\n{title} (test acc); rows=source W, cols=target features")
@@ -129,6 +159,13 @@ def main():
     for n in names:
         print(f"  {n:18s} {rho_raw[n]:+.3f}  ->  {rho_aligned[n]:+.3f}")
     print(f"  {'MEAN':18s} {mean_raw:+.3f}  ->  {mean_aligned:+.3f}")
+    print(f"\nconcept-disjoint Procrustes (R fit on {n_fit}/{N} concepts, "
+          f"eval on {n_dj} fully-held-out-concept triplets):")
+    for n in names:
+        print(f"  {n:18s} {rho_dj[n]:+.3f}")
+    print(f"  {'MEAN':18s} {mean_dj:+.3f}   "
+          f"(vs basis-aligned {mean_aligned:+.3f}; if it holds, the recovery is not "
+          f"the rotation fitting the eval concepts)")
 
     results = {
         "names": names, "shared_dim": shared_dim,
@@ -140,6 +177,11 @@ def main():
         "recovery_fraction_basis_aligned": rho_aligned,
         "mean_recovery": mean_raw,
         "mean_recovery_basis_aligned": mean_aligned,
+        "transfer_matrix_concept_disjoint": M_dj.tolist(),
+        "recovery_fraction_concept_disjoint": rho_dj,
+        "mean_recovery_concept_disjoint": mean_dj,
+        "concept_holdout_frac": holdout,
+        "concept_disjoint_n_test": n_dj,
     }
     (C.RESULTS_DIR / "transfer.json").write_text(json.dumps(results, indent=2))
     print(f"\nsaved -> {C.RESULTS_DIR / 'transfer.json'}")
