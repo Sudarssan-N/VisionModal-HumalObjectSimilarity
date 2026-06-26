@@ -35,6 +35,23 @@ def pca_reduce(X: np.ndarray, n_components: int, seed: int = 0) -> np.ndarray:
     return PCA(n_components=n_components, random_state=seed).fit_transform(Xs)
 
 
+def procrustes_rotation(A: torch.Tensor, B: torch.Tensor) -> torch.Tensor:
+    """Orthogonal Procrustes basis alignment.
+
+    Returns the orthogonal matrix ``R`` minimizing ``||A @ R - B||_F`` for
+    row-aligned ``A``, ``B`` (the *same* items in the same row order). Used in the
+    transfer experiment to rotate one model's independently-fit PCA basis into
+    another's *common coordinate frame* before transferring a transform, so weak
+    transfer cannot be blamed on arbitrary PCA axes. The fit uses only the
+    geometric correspondence of concept embeddings -- no human triplet labels --
+    and being orthogonal it cannot rescale or distort the geometry, so it removes
+    the basis-mismatch confound without doing any of the alignment work itself.
+    """
+    M = A.transpose(0, 1) @ B          # (p, p) cross-covariance over shared items
+    U, _, Vh = torch.linalg.svd(M, full_matrices=False)
+    return U @ Vh
+
+
 # --------------------------------------------------------------------------- #
 # Linear transform
 # --------------------------------------------------------------------------- #

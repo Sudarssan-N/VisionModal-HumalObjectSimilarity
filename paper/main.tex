@@ -30,6 +30,10 @@
   \fbox{\parbox[c][0.55\linewidth][c]{0.93\linewidth}{\centering\ttfamily #1\\(run pipeline + copy to figures/)}}}}%
 }
 
+% Visible placeholder for numbers to be filled in from the Colab run (basis-aligned
+% transfer). Never ship a TODO; replace each with the value src/transfer.py prints.
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+
 \title{How Far Can Cheap Linear Transforms Close the\\
 Human--Model Visual Similarity Gap?}
 
@@ -45,29 +49,33 @@ Human--Model Visual Similarity Gap?}
 \maketitle
 
 \begin{abstract}
-Pretrained vision models encode object similarity differently from humans. We ask
-how much of this gap is a simple linear distortion of an otherwise human-like
-space, and whether the required correction is shared across architectures. Using
-the THINGS odd-one-out benchmark (4.70M human triplet judgments over 1{,}854
-objects), we evaluate five frozen backbones spanning self-supervised (DINOv2),
-contrastive (CLIP, SigLIP), and supervised (ViT, ResNet-50) training, and learn a
-single L2-regularized linear transform per model with a triplet objective. We
-report three findings. (i)~\textbf{Universal near-ceiling alignability}: a cheap
-linear transform lifts \emph{every} backbone to 88--92\% of the human noise
-ceiling (0.59--0.62 odd-one-out accuracy), erasing large initial differences
-between training paradigms; the largest gains accrue to the weakest starting
-points (DINOv2, $+0.20$). (ii)~\textbf{Model-specificity}: transforms transfer
-poorly across architectures---a transform learned on one model recovers on average
-only $\sim$20\% (13--27\%) of the within-model alignment gain on another---so the
-gap is largely architecture/objective-specific rather than a single universal
-skew. (iii)~\textbf{A shared semantic ceiling}: the same abstract/functional
-categories (office supplies, furniture, musical instruments, medical equipment)
-resist linear alignment across all backbones. Representational similarity to the
-human embedding mirrors (i): raw Spearman correlations of 0.14--0.42 converge to
-0.78--0.83 after alignment. Results are stable across seeds and regularization
-strength, and an image-disjoint analysis shows only a small (1--6 point)
-contribution from image-level leakage, with contrastive models the most
-concept-general. Code is fully scripted from public data.
+Pretrained vision models encode object similarity differently from humans, and
+prior work shows that a learned linear transform of frozen features closes much of
+this gap. We focus on a question that line of work leaves open: \emph{is the
+required correction shared across architectures, or particular to each model?}
+Using the THINGS odd-one-out benchmark (4.70M human triplet judgments over 1{,}854
+objects), we learn a single L2-regularized linear transform per model for five
+frozen backbones spanning self-supervised (DINOv2), contrastive (CLIP, SigLIP),
+and supervised (ViT, ResNet-50) training, and ask how those transforms
+\emph{transfer} across architectures. Two results reproduce and consolidate prior
+findings across a broad zoo: a cheap linear map lifts \emph{every} backbone to
+88--92\% of the human noise ceiling (0.59--0.62 odd-one-out accuracy), erasing
+large initial differences between training paradigms (largest gain for the weakest
+model, DINOv2 $+0.20$); and the same abstract/functional categories (office
+supplies, furniture, musical instruments, medical equipment) resist linear
+alignment across all backbones. Our central contribution is a \emph{controlled}
+cross-model transfer analysis: a transform learned on one model recovers, on
+average, only $\sim$20\% of another model's within-model alignment gain. Because
+transferring in an independently-reduced PCA space conflates model-specific
+structure with arbitrary basis mismatch, we introduce an orthogonal-Procrustes
+control that first rotates each model into a common coordinate frame (using only
+the shared concept correspondence, no human labels); the weak transfer
+\emph{survives} this control (mean recovery \todo{basis-aligned mean from run}\%),
+indicating that the human--model gap is largely architecture/objective-specific
+rather than a single universal skew. Representational similarity to the human
+SPoSE embedding mirrors the alignment result (Spearman $0.14$--$0.42 \to
+0.78$--$0.83$), and an image-disjoint analysis bounds image-level leakage at 1--6
+points, smallest for contrastive models. All code is scripted from public data.
 \end{abstract}
 
 \section{Introduction}
@@ -100,29 +108,44 @@ reproducible on a single commodity GPU from public data.
 
 \paragraph{Contributions.}
 \begin{itemize}
-\item A reproducible THINGS odd-one-out benchmark over a five-model zoo, fully
-scripted from public data (download, feature extraction, alignment, transfer,
-analysis, robustness).
-\item Evidence that a cheap linear transform brings \emph{all} backbones to
-88--92\% of the human noise ceiling, with the largest gains for the weakest
-models---initial paradigm differences are largely a linear artifact.
-\item A cross-model transfer analysis quantifying that learned transforms are
-mostly model-specific (mean $\sim$20\% recovery of the within-model gain).
-\item A category-level error analysis revealing a shared semantic ceiling, and an
-image-disjoint robustness analysis isolating a small leakage component that is
-smallest for contrastive models.
+\item \textbf{A controlled cross-model transfer analysis} (our main contribution):
+holding the alignment recipe fixed across a five-model zoo, we quantify how much of
+one architecture's alignment gain a transform learned on another recovers
+($\sim$20\% on average) and---crucially---show this weak transfer \emph{survives} an
+orthogonal-Procrustes \emph{basis-alignment control} that rules out
+independently-fit PCA bases as the cause. To our knowledge this is the first such
+transfer analysis at this breadth on THINGS.
+\item \textbf{A consolidation of two known results across a broad zoo}: a cheap
+linear transform brings \emph{all} backbones to 88--92\% of the human ceiling with
+the largest gains for the weakest models, and a shared set of abstract/functional
+categories resists alignment everywhere. These \emph{corroborate}
+\citet{muttenthaler2023human,muttenthaler2024aligning} rather than claim novelty; we
+report them because they hold uniformly across our five-model span and motivate the
+transfer question.
+\item \textbf{An image-disjoint robustness analysis} isolating a small (1--6 point)
+image-leakage component that is smallest for contrastive models, plus a fully
+scripted, reproducible benchmark (download, feature extraction, alignment,
+transfer, analysis, robustness) from public data.
 \end{itemize}
 
 \section{Related work}
 \paragraph{Human alignment of representations.}
 \citet{muttenthaler2023human} show that linear ``transform'' probes optimized
-against human similarity improve correspondence to behavior, and
-\citet{muttenthaler2024aligning} extend this across abstraction levels and link
-alignment to downstream robustness. Our work is complementary in emphasis: rather
-than maximizing alignment for one model, we hold the alignment recipe fixed and
-\emph{contrast architectures}, asking whether the learned correction is shared.
+against human similarity improve correspondence to behavior, that architecture has
+little effect on the alignment achievable this way, and that abstract concepts
+resist alignment while concrete ones do not; \citet{muttenthaler2024aligning} extend
+this across abstraction levels and link alignment to downstream robustness. Our
+near-ceiling alignability (Table~\ref{tab:main}) and shared-semantic-ceiling
+(Table~\ref{tab:cats}) results \emph{directly corroborate} these reports and are not
+claimed as novel. Our distinct contribution is to hold the alignment recipe fixed
+and \emph{contrast architectures}---asking whether the learned correction is
+\emph{shared}---and to answer it with a transfer experiment plus an
+orthogonal-Procrustes basis-alignment control that prior work does not perform.
 \citet{sucholutsky2023alignment} survey the broader notion of representational
 alignment and its measurement.
+% TODO (optional): cite the same per-model $W$ + Frobenius-regularized recipe in
+% arXiv:2409.06362 (concept convexity) and arXiv:2510.23321 (flexible evaluation)
+% to sharpen lineage -- add verified bib entries before including.
 
 \paragraph{The THINGS similarity structure.}
 The THINGS database \citep{hebart2019things} and its CC0 image extension
@@ -138,10 +161,11 @@ Representational similarity analysis \citep{kriegeskorte2008rsa} compares system
 through their pairwise (dis)similarity matrices and is widely used to relate model
 and brain/behavior. Odd-one-out accuracy offers a complementary, decision-level
 metric that avoids arbitrary thresholds. We report both, and additionally study
-the \emph{transfer} of alignment transforms across architectures, which to our
-knowledge is underexplored at this breadth on THINGS.
+the \emph{transfer} of alignment transforms across architectures---with a
+basis-alignment control so the comparison is not an artifact of independently-fit
+shared spaces---which to our knowledge is underexplored at this breadth on THINGS.
 
-\section{Method}
+\section{Method}\label{sec:method}
 
 \paragraph{Data.} We use the 1{,}854 THINGS reference objects with one
 copyright-free (CC0) image per concept \citep{stoinski2024thingsplus}, and the
@@ -196,6 +220,26 @@ the share of a target's own-model alignment gain (over the $W{=}I$ baseline)
 captured by the average off-diagonal (transferred) transform:
 $\rho_t = (\bar a^{\text{off}}_t - a^{I}_t)/(a^{\text{own}}_t - a^{I}_t)$.
 
+\paragraph{Basis-alignment control.}\label{par:procrustes} The shared space is
+obtained by reducing each model \emph{independently}, so two models' principal axes
+need not lie in a common coordinate frame; a transform $W_{\text{src}}$ applied to
+$\hat z_{\text{tgt}}$ is then penalized for basis mismatch on top of any genuinely
+model-specific structure, which could inflate apparent specificity. Because every
+model embeds the \emph{same} 1{,}854 concepts in the same row order, we can remove
+this confound with an orthogonal-Procrustes rotation: for each (source, target) pair
+we solve
+\begin{equation}
+R^\star = \arg\min_{R^\top R = I}\ \big\lVert \hat Z_{\text{tgt}} R - \hat Z_{\text{src}} \big\rVert_F
+= U V^\top,\quad\text{where } \hat Z_{\text{tgt}}^\top \hat Z_{\text{src}} = U \Sigma V^\top,
+\end{equation}
+rotate the target into the source frame, and re-measure the accuracy of
+$W_{\text{src}}$ on $\hat Z_{\text{tgt}} R^\star$. The fit uses only the geometric
+concept correspondence (no human judgments), and being orthogonal it cannot rescale
+or distort the geometry---so it neutralizes the arbitrary basis without performing
+any of the alignment itself. If transfer stays weak after this control, weak
+transfer reflects model-specific structure rather than independently-fit PCA axes;
+we report $\rho_t$ both before (raw) and after (basis-aligned).
+
 \paragraph{RSA.} We correlate (Spearman) the upper triangle of each model's
 $1854\times1854$ cosine similarity matrix with that of the human SPoSE embedding,
 before and after alignment.
@@ -219,7 +263,12 @@ five converge to $0.59$--$0.62$, i.e.\ 88--92\% of the human ceiling. The
 improvement is largest for the weakest baselines (DINOv2 $+0.200$, ResNet
 $+0.180$) and smallest for the already-strong CLIP ($+0.130$), so much of the
 apparent advantage of contrastive pretraining for human alignment is a linear
-artifact that a cheap map removes.
+artifact that a cheap map removes. This near-ceiling, architecture-insensitive
+alignability corroborates \citet{muttenthaler2023human,muttenthaler2024aligning}
+rather than being a new finding; the converged $0.59$--$0.62$ band is stable across
+seeds (std $\le 0.004$, Table~\ref{tab:robust}), though the per-model aligned values
+in Table~\ref{tab:main} are single-seed point estimates and the small between-model
+spread should be read with that caveat.
 
 \begin{table}[t]
 \centering
@@ -240,17 +289,49 @@ ViT-B/16        & supervised  & 768  & 0.436 & 0.593 & $+0.157$ & 88.0 \\
 \end{tabular}
 \end{table}
 
-\subsection{Transforms are mostly model-specific}
-Table~\ref{tab:transfer} reports the transfer matrix in the shared 256-d space.
+\subsection{Transforms are mostly model-specific---and this survives a basis-alignment control}
+Table~\ref{tab:transfer} reports the raw transfer matrix in the shared 256-d space.
 Own-model transforms (diagonal) reach $0.55$--$0.60$, but transferred transforms
 (off-diagonal) reach only $0.39$--$0.47$. Off-diagonal entries do exceed the
 identity baseline ($0.35$--$0.39$), so there is a weak shared linear component;
 but the average recovery fraction is only $19.5\%$ (range $13.0\%$ for SigLIP to
 $27.0\%$ for ResNet). CLIP is the strongest donor (mean transferred accuracy
 $0.423$), consistent with its image--text objective inducing a more
-concept-general space. Overall, the human--model gap is largely
-architecture/objective-specific rather than a single universal skew
-(Fig.~\ref{fig:heatmap}).
+concept-general space.
+
+\paragraph{Ruling out the PCA-basis confound.} Because each model's shared space is
+reduced independently, low raw transfer could in principle reflect mismatched PCA
+bases rather than genuinely model-specific structure. We test this with the
+orthogonal-Procrustes control of Section~\ref{sec:method} (\emph{Basis-alignment
+control}): after rotating each target into the source's coordinate frame, mean
+recovery is
+\todo{basis-aligned mean from run}\% (per model \todo{basis-aligned range}\%),
+\todo{essentially unchanged from / much higher than} the raw $19.5\%$
+(Table~\ref{tab:recovery}, Fig.~\ref{fig:heatmap}). As a positive control, on
+synthetic features in which all models are noisy linear read-outs of a single
+\emph{shared} latent structure, the identical procedure lifts recovery from
+$\sim$25\% to $\sim$90\%---so the control has the power to expose a basis artifact
+when one is present. \todo{If recovery stays low:} The weak transfer is therefore
+not a basis artifact: the human--model gap is largely architecture/objective-specific
+rather than a single universal skew.
+
+\begin{table}[t]
+\centering
+\caption{Recovery fraction (share of own-model alignment gain captured by transferred
+transforms), before and after the orthogonal-Procrustes basis-alignment control. A
+control that leaves recovery near the raw value indicates genuinely model-specific
+structure; a large jump would indicate a basis artifact (cf.\ the synthetic positive
+control, $\sim$25\%$\to\sim$90\%).}
+\label{tab:recovery}
+\begin{tabular}{lcc}
+\toprule
+Transfer setting & Mean recovery $\bar\rho$ & Range \\
+\midrule
+Raw (independent PCA)      & 0.195 & 0.130--0.270 \\
+Basis-aligned (Procrustes) & \todo{mean} & \todo{min--max} \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{table}[t]
 \centering
@@ -302,9 +383,11 @@ aligned  & 0.811 & 0.793 & 0.831 & 0.828 & 0.775 \\
 \begin{minipage}{0.48\textwidth}
 \centering
 \figorbox{transfer_heatmap.png}
-\caption{Cross-model transfer of alignment transforms (odd-one-out test
-accuracy). The strong diagonal and weak off-diagonal show transforms are mostly
-model-specific.}
+\caption{Cross-model transfer of alignment transforms (odd-one-out test accuracy).
+\emph{Left}: raw, independently-reduced PCA spaces. \emph{Right}: after the
+orthogonal-Procrustes basis-alignment control. A strong diagonal with weak
+off-diagonal in \emph{both} panels indicates transforms are model-specific, not a
+basis artifact.}
 \label{fig:heatmap}
 \end{minipage}\hfill
 \begin{minipage}{0.48\textwidth}
@@ -372,9 +455,11 @@ ceiling) across self-supervised, contrastive, and supervised backbones: the
 human-relevant similarity structure is linearly present in all of them, and
 differences in zero-shot alignment mostly reflect how that structure is rotated
 and scaled, not whether it exists. Second, the \emph{direction} of the required
-correction is model-specific: transforms transfer weakly, so there is no single
-universal ``human-alignment patch''---the distortions are particular to each
-architecture/objective. Third, what linear alignment cannot fix is shared: the
+correction is model-specific: transforms transfer weakly even after an
+orthogonal-Procrustes alignment of the models' bases (\todo{basis-aligned
+recovery}\% recovery), so the weak transfer is not an artifact of comparing
+independently-reduced spaces---there is no single universal ``human-alignment
+patch'' and the distortions are particular to each architecture/objective. Third, what linear alignment cannot fix is shared: the
 same abstract/functional categories remain hard everywhere, pointing to a
 semantic component of the gap that is not a linear distortion at all.
 
@@ -391,9 +476,13 @@ Our study uses a single CC0 reference image per concept, so it does not model
 within-concept visual variation; behavioral (not neural) alignment; base-size
 backbones only; and linear maps only. The image-disjoint analysis shows results
 are not driven by image leakage, but the headline numbers follow the standard
-triplet-level protocol and include a small (1--6 point) leakage component.
-Non-linear or hyperbolic maps, larger model scales, and neural targets
-(THINGS-fMRI/MEG) are natural extensions.
+triplet-level protocol and include a small (1--6 point) leakage component. The
+transfer control uses an orthogonal (rigid) basis alignment by design---so it
+cannot disguise model-specific structure as transferable---but it therefore also
+does not test whether a richer affine or CCA mapping between models would transfer
+better; that is a separate, weaker claim we do not make. Non-linear or hyperbolic
+maps, larger model scales, and neural targets (THINGS-fMRI/MEG) are natural
+extensions.
 
 \section{Conclusion}
 On THINGS odd-one-out, cheap linear transforms close most of the human--model

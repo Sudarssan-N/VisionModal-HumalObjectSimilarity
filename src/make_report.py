@@ -43,23 +43,48 @@ def table1(zs, al) -> str:
     return "\n".join(rows)
 
 
-def transfer_table(tr) -> str:
-    if not tr:
-        return "_no transfer.json yet_"
-    names = tr["names"]
-    M = tr["transfer_matrix"]
-    head = "| W ↓ \\ target → | " + " | ".join(names) + " |"
+def _matrix_md(names, M, label) -> str:
+    head = f"| {label}: W ↓ \\ target → | " + " | ".join(names) + " |"
     sep = "|" + "---|" * (len(names) + 1)
     rows = [head, sep]
     for i, src in enumerate(names):
         rows.append(f"| **{src}** | " + " | ".join(_fmt(M[i][j], 3)
                     for j in range(len(names))) + " |")
-    base = tr.get("baseline", {})
-    rows.append("")
-    rows.append("Baseline (W=I): " + ", ".join(f"{k} {_fmt(v,3)}"
-                for k, v in base.items()))
-    rows.append(f"\n_shared_dim = {tr.get('shared_dim')}_")
     return "\n".join(rows)
+
+
+def transfer_table(tr) -> str:
+    if not tr:
+        return "_no transfer.json yet_"
+    names = tr["names"]
+    out = [_matrix_md(names, tr["transfer_matrix"], "raw (independent PCA)")]
+
+    # Procrustes basis-alignment control (added to isolate the PCA-basis confound).
+    M_ba = tr.get("transfer_matrix_basis_aligned")
+    if M_ba is not None:
+        out.append("")
+        out.append(_matrix_md(names, M_ba, "Procrustes basis-aligned"))
+
+    base = tr.get("baseline", {})
+    out.append("")
+    out.append("Baseline (W=I): " + ", ".join(f"{k} {_fmt(v,3)}"
+               for k, v in base.items()))
+
+    # Recovery fraction: raw vs basis-aligned per target, plus the means.
+    rho = tr.get("recovery_fraction")
+    rho_ba = tr.get("recovery_fraction_basis_aligned")
+    if rho:
+        out.append("")
+        out.append("| Recovery fraction ρ_t | " + " | ".join(names) + " | mean |")
+        out.append("|" + "---|" * (len(names) + 2))
+        out.append("| raw | " + " | ".join(_fmt(rho.get(n), 3) for n in names) +
+                   f" | {_fmt(tr.get('mean_recovery'), 3)} |")
+        if rho_ba:
+            out.append("| basis-aligned | " +
+                       " | ".join(_fmt(rho_ba.get(n), 3) for n in names) +
+                       f" | {_fmt(tr.get('mean_recovery_basis_aligned'), 3)} |")
+    out.append(f"\n_shared_dim = {tr.get('shared_dim')}_")
+    return "\n".join(out)
 
 
 def rsa_table(an) -> str:
